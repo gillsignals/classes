@@ -1,0 +1,11 @@
+---
+title: "_______ - DataCamp Course Notes"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+These notes and exercises are based on the DataCamp course ___________. All notes and completed exercises are by Amy Gill. Exercises were originally designed by DataCamp and data sets are downloaded from the DataCamp servers.
+
+## 

@@ -1,0 +1,334 @@
+---
+title: "Importing Data in R: Part 2 - DataCamp Course Notes"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+These notes and exercises are based on the DataCamp course Importing Data in R: Part 2. All notes and completed exercises are by Amy Gill. Exercises were originally designed by DataCamp and data sets are downloaded from the DataCamp servers.
+
+## HTTP and HTTPS Compatibility: Importing Data from the Web
+
+The built-in *read.table* (*read.csv*, *read.tsv*) and *readr* package *read_delim* functions (*read_csv*, *read_tsv*) are able to make http and https connections to import flat files from the web:
+
+```{r}
+# Load the readr package
+library(readr)
+
+# Import the csv file: pools
+url_csv <- "https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/swimming_pools.csv"
+pools <- read_csv(url_csv)
+
+# Import the txt file: potatoes
+url_delim <- "https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/potatoes.txt"
+potatoes <- read_tsv(url_delim)
+
+# Print pools and potatoes
+pools
+potatoes
+```
+
+## Using URLs to download HTTPS data sets including .RData
+
+Some packages are not able to directly interface with HTTP/HTTPS and cannot directly download data from a URL. For example, the *readxl* package does not currently support direct data download. In this case, you will have to download data onto your local system and then import from the working directory.
+
+Some file formats also do not have common package support for direct download. For example, .RData is a very efficient format for storing R Data that can also be imported via *download.file* and then loaded into the R session with *load*.
+
+```{r}
+# https URL to the wine RData file.
+url_rdata <- "https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/wine.RData"
+
+# Download the wine file to your working directory
+download.file(url_rdata, "wine_local.RData")
+
+# Load the wine data into your workspace using load()
+load("wine_local.RData")
+
+# Print out the summary of the wine data
+summary(wine)
+```
+
+## The httr package and the GET request
+
+*GET* is an explicit HTTP GET call within R. This allows access to the raw html in addition to processed text and formatted objects such as JSON objects and arrays (see next section).
+
+```{r}
+# load httr
+library(httr)
+
+# Get the url
+url <- "http://www.omdbapi.com/?apikey=ff21610b&t=Annie+Hall&y=&plot=short&r=json"
+resp <- GET(url)
+
+# Print resp
+resp
+
+# Print content of resp as text
+content(resp, as = "text")
+
+# Print content of resp
+content(resp)
+```
+
+## The JSON Format, APIs, and the jsonlite Package
+
+JSON format:simple, concise, well-structured; human-readable; easy to parse and generate for computers; great for communicating an information summary
+
+API = application programming interface: set of routines and protocols for building software regulating how different components interact
+
+A web API will generally be an interface to get/add data to server and manage HTTP "verbs" (GET and others)
+
+For example, Twitter has an API:
+
+https://dev.twitter.com/rest/public
+
+This can allow many remote interactions with Twitter, including:
+-get tweets
+-place comments on tweets
+-many applications including researching effects of tweets
+  
+The *jsonlite* package is designed for conveniently working with JSON formats and improves on earlier R packages by providing consistent, robust functions that support all use cases.
+
+JSONs can be built in R with curly braces as {"key":"value"} pairs and extracted into lists with *fromJSON*:
+
+```{r}
+# Load the jsonlite package
+library(jsonlite)
+
+# wine_json is a JSON
+wine_json <- '{"name":"Chateau Migraine", "year":1997, "alcohol_pct":12.4, "color":"red", "awarded":false}'
+
+# Convert wine_json into a list: wine
+wine <- fromJSON(wine_json)
+
+# Print structure of wine
+str(wine)
+```
+
+JSONs can also be extracted directly from URLs:
+
+```{r}
+
+# Definition of quandl_url
+quandl_url <- "https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?auth_token=i83asDsiWUUyfoypkgMz"
+
+# Import Quandl data: quandl_data
+quandl_data <- fromJSON(quandl_url)
+
+# Print structure of quandl_data
+str(quandl_data)
+```
+
+Data extracted into R from JSON format objects can be easily queried and compared:
+
+```{r}
+
+# Definition of the URLs
+url_sw4 <- "http://www.omdbapi.com/?apikey=ff21610b&i=tt0076759&r=json"
+url_sw3 <- "http://www.omdbapi.com/?apikey=ff21610b&i=tt0121766&r=json"
+
+# Import two URLs with fromJSON(): sw4 and sw3
+sw4 <- fromJSON(url_sw4)
+sw3 <- fromJSON(url_sw3)
+
+# Print out the Title element of both lists
+sw4$Title
+sw3$Title
+
+
+# Is the release year of sw4 later than sw3?
+sw4$Year > sw3$Year
+```
+```{r}
+
+# Challenge 1
+json1 <- '[1, 2, 3, 4, 5, 6]'
+fromJSON(json1)
+
+# Challenge 2
+json2 <- '{"a": [1, 2, 3], "b":[4, 5, 6]}'
+fromJSON(json2)
+```
+
+```{r}
+# jsonlite is already loaded
+
+# Challenge 1
+json1 <- '[[1, 2], [3, 4]]'
+fromJSON(json1)
+
+# Challenge 2
+json2 <- '[{"a": 1, "b": 2}, {"a": 3, "b": 4}, {"a":5, "b":6}]'
+fromJSON(json2)
+```
+
+You can also make your own JSON objects from other R objects using *toJSON*.
+
+By default, the display will be in mini format, which is compact but difficult for the human eye to read. This can be changed with the argument *pretty = TRUE*.
+
+Existing JSON objects can be switched between pretty and mini display format using *prettify* and *minify*.
+
+```{r}
+# jsonlite is already loaded
+
+# URL pointing to the .csv file
+url_csv <- "http://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/water.csv"
+
+# Import the .csv file located at url_csv
+water <- read.csv(url_csv, stringsAsFactors = FALSE)
+
+# Convert the data file according to the requirements
+water_json <- toJSON(water)
+
+# Print out water_json
+water_json
+```
+```{r}
+# jsonlite is already loaded
+
+# Convert mtcars to a pretty JSON: pretty_json
+pretty_json <- toJSON(mtcars, pretty = TRUE)
+
+# Print pretty_json
+pretty_json
+
+# Minify pretty_json: mini_json
+mini_json <- minify(pretty_json)
+
+# Print mini_json
+mini_json
+```
+
+## Importing Data from Statistical Software (SAS, STATA, SPSS) - The haven Package
+
+Several statistical software suites are used in research and business, and these data formats can also be imported in R. Three common statistical software offerings include SAS, STATA, and SPSS.
+
+SAS - Statistical Analysis Software - business analytics, biostatistics, medical sciences - .sas7bdat, .sas7bcat
+
+STATA - Statistics and Data - economics - .dta
+
+SPSS - Statistical Packages for Social Sciences - social sciences - .sav, .por
+
+*haven* is a package for importing SAS, STATA, and SPSS files.
+
+In *haven*, SAS files are read with *read_sas*:
+
+```{r}
+# Load the haven package
+library(haven)
+
+# Import sales.sas7bdat: sales
+sales_url <- "https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/sales.sas7bdat"
+sales <- read_sas(sales_url)
+
+# Display the structure of sales
+str(sales)
+```
+
+In *haven*, STATA files are read with *read_stata* or *read_dta*.
+
+Note that some variables from STATA may be of the "labelled" class. If so, they will initially appear as integers with layered label data. The labels can be extracted with *as_factor*.
+
+```{r}
+# haven is already loaded
+
+# Import the data from the URL: sugar
+sugar_url <- "http://assets.datacamp.com/production/course_1478/datasets/trade.dta"
+sugar <- read_dta(sugar_url)
+
+# display sugar Date column
+head(sugar$Date)
+
+# Convert values in Date column to dates
+sugar$Date <- as.Date(as_factor(sugar$Date))
+
+# display converted sugar Date column
+head(sugar$Date)
+```
+
+In *haven*, SPSS files can be read using *read_sav* or *read_por* based on their suffix.
+
+SPSS files can also have "labelled" class columns that may need to be converted for R work with *as_factor*.
+
+```{r}
+# haven is already loaded
+
+# Import SPSS data from the URL: work
+work <- read_sav("http://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/employee.sav")
+
+# Display summary of work$GENDER
+summary(work$GENDER)
+
+
+# Convert work$GENDER to a factor
+work$GENDER <- as_factor(work$GENDER)
+
+
+# Display summary of work$GENDER again
+summary(work$GENDER)
+
+```
+
+## Alternative Importing of Statistical Package Software Data - The foreign Package
+
+*foreign* is a package written by the core R team that can import data from a variety of statistical programs, not just SAS/STATA/SPSS. However, its usage is less consistent and it has some compatibility issues (as of course writing in late 2016). This is a brief introduction to *foreign* and some of its arguments specifically for SAS/STATA/SPSS import.
+
+To load STATA data, use *read.dta*:
+
+```{r}
+# Load the foreign package
+library(foreign)
+
+# Import florida.dta and name the resulting data frame florida
+florida_url <- "https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/florida.dta"
+florida <- read.dta(florida_url)
+
+# Check tail() of florida
+tail(florida)
+```
+
+The key default for STATA is *convert.factors = TRUE*, which avoids the need for factor conversion after import.
+
+```{r}
+# foreign is already loaded
+
+# Specify the URL for educational equality data
+path <- "https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/edequality.dta"
+
+# Create and print structure of edu_equal_1
+edu_equal_1 <- read.dta(path)
+str(edu_equal_1)
+
+# Create and print structure of edu_equal_2
+edu_equal_2 <- read.dta(path, convert.factors = FALSE)
+str(edu_equal_2)
+
+
+# Create and print structure of edu_equal_3
+edu_equal_3 <- read.dta(path, convert.underscore = TRUE)
+str(edu_equal_3)
+
+```
+
+To import SPSS, use *read.spss*. By default, the data is read as a list rather than a data frame. This can be changed with the option *to.data.frame = TRUE*. To change whether labelled are changed to factors, alter *use.value.labels* from TRUE (default) to FALSE.
+
+```{r}
+# foreign is already loaded
+
+# Import international.sav as demo_1
+demo_1 <- read.spss("https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/international.sav", to.data.frame = TRUE)
+
+# Print out the head of demo_1
+head(demo_1)
+
+# Import international.sav as demo_2
+demo_2 <- read.spss("https://s3.amazonaws.com/assets.datacamp.com/production/course_1478/datasets/international.sav", to.data.frame = TRUE, use.value.labels = FALSE)
+
+# Print out the head of demo_2
+head(demo_2)
+```
+
+More information can be found in the *foreign* documentation. In general, though, Hadley Wickham's *haven* is more intuitive and simpler if working with SAS/STATA/SPSS.
+
+## Enjoy seamlessly importing data in R!

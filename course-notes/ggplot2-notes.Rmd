@@ -1,0 +1,147 @@
+---
+title: "Intro to Data Visualization with ggplot2"
+author: "Amy Gill"
+date: "October 6, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction to Data Visualization with ggplot2 - Course 1
+
+•	Understand how structure of data set can help determine useful types of plots
+•	How to use elements such as color and size effectively
+•	Best plot type for accurately representing nature of data
+•	Common pitfalls and how to avoid them
+•	Course 1: concepts, data, aesthetics, geometries
+•	Course 2: statistics, coordinates, facets, themes, best practices, case study
+•	Course 3: Advanced plots and ggplot2 internals
+•	Merge statistics with design in meaningful and appropriate ways
+  o	Graphical data analysis emphasizing accurate rep and interp of data
+  o	Attractive and meaningful – aids understanding and comm of results
+•	Exploratory vs explanatory
+  o	Exploratory – easily generated, data heavy, intended for small specialist audience, confirm and analyze
+  o	Explanatory – labor intensive, data specific, intended for broad audience like publication, communications, inform and persuade
+•	Good design begins with thinking about the audience
+
+
+```{r}
+# Load the ggplot2 package
+library(ggplot2)
+
+# Explore the mtcars data frame with str()
+str(mtcars)
+
+```
+Make a scatter plot of mpg vs cyl:
+
+```{r}
+# Plot mpg vs cyl
+ggplot(mtcars, aes(x = cyl, y = mpg)) +
+  geom_point()
+```
+Note that cyl is treated as a continuous variable, but this is not quite accurate. There are no 5/7 cylinder cars.
+
+Explicitly tell ggplot to treat variables as factors to eliminate unused categories:
+
+```{r}
+ggplot(mtcars, aes(x = factor(cyl), y = mpg)) +
+  geom_point()
+```
+Other variables like color and size can be used to add additional information to plots with aesthetic mapping.
+```{r}
+#Compare mpg vs wt and overlay displacement of car engine as color
+ggplot(mtcars, aes(x = wt, y = mpg, color = disp)) +
+  geom_point()
+
+# Remap disp as size instead of color
+ggplot(mtcars, aes(x = wt, y = mpg, size = disp)) +
+  geom_point()
+
+```
+Note that legends are automatically created.
+
+Now, let's explore the built-in diamonds dataset. This contains information about the prices and various metrics of approximately 50000 diamonds.
+```{r}
+str(diamonds)
+```
+```{r}
+# Add geom_point() and geom_smooth() with +
+ggplot(diamonds, aes(x = carat, y = price)) +
+geom_point() +
+geom_smooth()
+```
+
+```{r}
+# 1 - The plot you created in the previous exercise
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point() +
+  geom_smooth()
+
+# 2 - Copy the above command but show only the smooth line
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_smooth()
+
+
+# 3 - Copy the above command and assign the correct value to col in aes()
+ggplot(diamonds, aes(x = carat, y = price, color = clarity)) +
+  geom_smooth()
+
+
+# 4 - Keep the color settings from previous command. Plot only the points with argument alpha.
+ggplot(diamonds, aes(x = carat, y = price, color = clarity)) +
+  geom_point(alpha = 0.4)
+
+```
+
+You can store a plot as a ggplot object and add other layers later.
+
+Note that aesthetics can also be defined inside a geom call.
+```{r}
+# Create the object containing the data and aes layers: dia_plot
+dia_plot <- ggplot(diamonds, aes(x = carat, y = price))
+
+# Add a geom layer with + and geom_point()
+dia_plot + geom_point()
+
+# Add the same geom layer, but with aes() inside
+dia_plot + geom_point(aes(color = clarity))
+
+```
+
+Use objects to add and save layers to your plots and experiment with different visualizations through combinations of aesthetics and geometries.
+
+```{r}
+# 1 - The dia_plot object has been created for you
+dia_plot <- ggplot(diamonds, aes(x = carat, y = price))
+
+# 2 - Expand dia_plot by adding geom_point() with alpha set to 0.2
+dia_plot <- dia_plot + geom_point(alpha = 0.2)
+
+# 3 - Plot dia_plot with additional geom_smooth() with se set to FALSE
+dia_plot + geom_smooth(se = FALSE)
+
+# 4 - Copy the command from above and add aes() with the correct mapping to geom_smooth()
+dia_plot + geom_smooth(aes(color = clarity), se = FALSE)
+
+```
+
+Base R can have extra variables like color added on as well. Recall though that base R lacks other benefits - mutability of plot type without changing syntax, easy changing or addition of layer features, saving intermediate features for iteration, and more.
+```{r}
+# Plot the correct variables of mtcars
+plot(mtcars$wt, mtcars$mpg, col = mtcars$cyl)
+
+# Change cyl inside mtcars to a factor
+mtcars$fcyl <- as.factor(mtcars$cyl)
+
+# Make the same plot as in the first instruction
+plot(mtcars$wt, mtcars$mpg, col = mtcars$fcyl)
+
+```
+
+To add a linear model to data, define a model with *lm()* and then plot the model with *abline()*.
+
+To add a model for several subgroups, there are multiple options. One choice is to subset data and then calculate *lm()* and plot each subset separately. Alternatively, vectorize using *lapply()* and combine all in one step.
+

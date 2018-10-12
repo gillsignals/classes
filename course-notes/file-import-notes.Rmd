@@ -1,0 +1,162 @@
+---
+title: "Importing Data in R"
+output: html_notebook
+---
+
+## Importing flat files - .csv, .txt, including odd delimiters
+
+read.table("filename.txt", header = FALSE, sep = "/", stringsAsFactors = TRUE)
+*header = TRUE* indicates first row lists variable names - default FALSE
+plenty of other arguments like col.names, colClasses
+
+
+For common delimited file types, wrapper functions with common defaults are supplied:
+
+read.csv() - comma delimited
+read.delim() - tab delimited
+
+
+COMMA DELIMITED:
+read.csv("filename.csv")
+by default for read.csv *header = TRUE* and *sep = ","* 
+also by default *stringsAsFactors = TRUE*, can set to FALSE to have them be character strings instead -
+
+TAB DELIMITED:
+read.delim("filename.txt")
+by default *header = TRUE, sep = "\t", stringsAsFactors = TRUE*
+
+There are also read.csv2() and read.delim2() to account for regional differences in representing numerals with commas/decimals - see documentation, and if you are not getting a clean import try the other function variant. 
+
+
+
+```{r}
+
+hotdogs <- read.delim("hotdogs.txt",header = FALSE, col.names = c("type", "calories", "sodium"))
+
+lily <- hotdogs[which.min(hotdogs$calories), ]
+lily
+
+tom <- hotdogs[which.max(hotdogs$sodium), ]
+tom
+
+```
+
+You can also specify the column classes of the resulting data frame with the *colClasses* argument:
+
+read.delim("filename.txt", colClasses = c("character", "numeric", "logical"))
+
+This is useful if some of your columns should be factors and others should be characters and can be used instead of stringsAsFactors.
+
+If a column is set to "NULL" in colClasses, it will be skipped and not loaded into the data frame.
+
+
+## The readr package
+
+Fast, easy to use, consistent - compared to built-in utils, which is verbose and can be slow
+
+Imports as tibbles
+
+```{r}
+library(readr)
+```
+
+In readr:
+read_delim("filename.txt", delim = "/")
+read_csv("filename.csv")
+read_tsv("filename.txt")
+By default, strings are not converted to factors, so there is no need for the stringsAsFactors argument.
+
+For read_delim:
+*col_names = TRUE* by default
+*col_types* automatically inferred by first row, or can be manually specified using the following shorthand:
+c=character d=double i=integer l=logical
+so *col_types = "ccddil"* makes 6 columns, chr chr dbl dbl int lgl
+
+Other useful functionality for readr read_delim:
+skip = skip n rows at start before reading - remember add col_names if skipping header!
+n_max = number of rows to read
+
+## Reading Excel Format Files - The readxl Package
+
+readxl has two main functions:
+excel_sheets(): lists different sheets
+read_excel(): import excel doc from .xls or .xlsx
+
+```{r}
+library(readxl)
+```
+
+*excel_sheets("cities.xlsx")* returns 
+[1] "year_1990" "year_2000"
+
+By default, read_excel() imports the first sheet unless told otherwise:
+*read_excel("cities.xlsx")* imports sheet "year_1990"
+*read_excel("cities.xlsx", sheet = 2)* imports sheet "year_2000"
+*read_excel("cities.xlsx", sheet = "year_2000")* imports sheet "year_2000"
+
+You can chain the two readxl functions with lapply to quickly import all sheets:
+```{r}
+## THIS FILE IS NOT IN THE WORKING DIRECTORY - SNIPPET ONLY
+lapply(excel_sheets("cities.xlsx"), read_excel, path="cities.xlsx")
+```
+col_names can be TRUE (default) - first row of table, FALSE - R assigns placeholders, character vector with names
+
+col_types can be "NULL" (R will guess), "text", "numeric", "date", or "blank" (R will not import that column)
+
+ALSO AVAILABLE: gdata package - readxl is still under development, so if you are not comfortable using something before it's finalized-ish, learn gdata. The gdata *read.xls()* function is an intuitive extension of read.table, BUT it only works for .xls and not .xlsx without a patch.
+```{r}
+## NOTE THIS FILE IS NOT IN MY WORKING DIRECTORY - JUST A CODE SNIPPET
+
+
+library(gdata)
+
+# Column names for urban_pop
+columns <- c("country", paste0("year_", 1967:1974))
+
+# Finish the read.xls call
+urban_pop <- read.xls("urbanpop.xls", sheet = 2,
+                      skip = 50, header = FALSE, stringsAsFactors = FALSE,
+                      col.names = columns)
+
+# Print first 10 observation of urban_pop
+head(urban_pop, 10)
+
+```
+
+## The XLConnect Package for Reproducible Excel Work
+
+creates workbook objects - bridge between Excel and R
+- Load with *loadWorkbook*
+- List sheets with *getSheets*
+- Read worksheet with *readWorksheet*
+```{r}
+## NOTE THIS FILE IS NOT IN MY WORKING DIRECTORY - JUST A CODE SNIPPET
+
+library(XLConnect)
+
+book <- loadWorkbook("cities.xlsx")
+getSheets(book)
+
+readWorksheet(book, sheet = 2)
+readWorksheet(book, sheet = "year_2000")
+```
+
+The startRow, endRow, startCol, endCol args can define selective inputs:
+```{r}
+readWorksheet(book, sheet = 2, startRow = 3, endRow = 4, startCol = 2, header = FALSE)
+```
+
+- Add sheets with *createSheet*, *writeWorksheet*
+- Save changes with *saveWorkbook*
+- Rename sheets with *renameSheet*
+- Remove sheets with *removeSheet*
+- Plenty more to style cells, arrange, and more...
+```{r}
+createSheet(book, name = "year_2010")
+pop_2010 <- ## TRUNCATED
+writeWorksheet(book, pop_2010, sheet = "year_2010")
+saveWorkbook(book, file = "cities2.xlsx")
+renameSheet(book, year_2010, Y2010)
+removeSheet(book, Y2010)
+```
+

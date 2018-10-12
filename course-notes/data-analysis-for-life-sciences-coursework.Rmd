@@ -1,0 +1,513 @@
+---
+title: "Data Analysis for Life Sciences Coursework - Amy Gill"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Getting Started Exercises
+
+```{r}
+mouse_weights <- read.csv("femaleMiceWeights.csv")
+mouse_weights
+```
+
+```{r}
+mouse_weights$Bodyweight[11]
+```
+
+```{r}
+mean(mouse_weights$Bodyweight[13:24])
+```
+
+```{r}
+#Take a random sample of a number 13-24 and report back the weight of the mouse on that row
+set.seed(1)
+mouse_weights$Bodyweight[sample(13:24,1)]
+```
+
+## dplyr Exercises
+
+```{r}
+sleep <- read.csv("msleep_ggplot2.csv")
+sleep
+```
+
+Only the primates:
+
+```{r}
+primates <- sleep %>% filter(order == "Primates")
+primates
+```
+
+Extract the sleep total for primates and determine its mean. Note that the list of numbers must be flattened to a vector first to compute parameters.
+
+```{r}
+primate_sleep <- primates %>% select(sleep_total)
+mean(unlist(primate_sleep))
+```
+The summary statistic can also be computed using summarize():
+
+```{r}
+primate_sleep <- sleep %>% filter(order == "Primates") %>% summarize(mean=mean(sleep_total))
+primate_sleep
+```
+## Random Variables Exercises
+
+```{r}
+x <- unlist(read.csv("femaleControlsPopulation.csv"))
+mean(x)
+```
+
+Take a random sample of size 5. Report the absolute value of the difference between the sample average and population average.
+
+```{r}
+set.seed(1)
+my_set <- sample(x, 5)
+abs(mean(my_set)-mean(x))
+```
+
+```{r}
+set.seed(5)
+my_set <-sample(x, 5)
+abs(mean(my_set)-mean(x))
+```
+
+## Null Distributions Exercises
+
+Set the seed at 1. Using a for-loop take a random sample of 5 mice 1000 times. Save these averages. What proportion of these 1000 averages are more than 1g away from the average of x?
+
+```{r}
+set.seed(1)
+
+n <- 1000
+nulls <- vector("numeric", n)
+for (i in 1:n) {
+  mice <- sample(x,5)
+  nulls[i] <- mean(mice)
+}
+
+mean((abs(nulls-mean(x))) > 1)
+
+
+```
+```{r}
+set.seed(1)
+simulated_expts <- replicate(n, mean(sample(x,5)) )
+
+mean(abs(simulated_expts-mean(x)) > 1)
+```
+
+Oddly, the *replicate* function gives the correct answer whereas a for loop does not. So much for "random" sampling even with a set seed...oh well.
+
+Take a random sample of 50 mice 1000 times. What proportion are more than 1 gram away from the average of x?
+
+```{r}
+set.seed(1)
+n = 1000
+simulated_expts <- replicate(n, mean(sample(x,50)) )
+mean(abs(simulated_expts-mean(x)) > 1)
+
+```
+
+
+## Probability Distributions Exercises
+
+```{r}
+library(gapminder)
+data(gapminder)
+head(gapminder)
+```
+
+
+Create a vector 'x' of the life expectancies of each country for the year 1952. Plot a histogram of these life expectancies to see the spread of the different countries.
+
+```{r}
+lifeExp <- gapminder %>% filter(year == 1952) %>% select(lifeExp)
+x <- unlist(lifeExp)
+hist(x)
+```
+Proportion of countries in 1952 with life expectancy below 40:
+
+```{r}
+mean(x <= 40)
+```
+```{r}
+mean(x <=60) - mean (x<=40)
+```
+Suppose we want to plot the proportions of countries with life expectancy 'q' for a range of different years. 
+```{r}
+prop = function(q) {
+  mean(x<=q)
+}
+```
+Let's try it out for many qs:
+
+```{r}
+qs <- seq(from=min(x), to=max(x), length=20)
+qs
+```
+```{r}
+props = sapply(qs, prop)
+plot(qs,props)
+```
+Compare this to the pre-built function in R:
+```{r}
+plot(ecdf(x))
+```
+## Normal Distribution Exercises
+
+```{r}
+
+x <- unlist( read.csv("femaleControlsPopulation.csv"))
+
+n=1000
+set.seed(1)
+five_mice <- replicate(n, {
+  mean(sample(x,5))
+})
+
+hist(five_mice)
+```
+
+```{r}
+
+fifty_mice <- replicate(n, {
+  mean(sample(x,50))
+})
+
+hist(fifty_mice)
+```
+The distributions are very similar and approximate the same expected value, but fifty_mice with larger sample size has a much smaller spread.
+
+Proportion of second distribution between 23 and 25 g:
+```{r}
+mean((fifty_mice < 25) - (fifty_mice < 23))
+```
+```{r}
+#Proportion of normal distribution with mean=23.9 sd=0.43 between 23-25:
+z_25 <- (25-23.9)/.43
+z_23 <- (23-23.9)/.43
+pnorm(z_25) - pnorm(z_23)
+```
+## Populations, Samples, and Estimates Exercises
+
+```{r}
+dat <- read.csv("mice_pheno.csv")
+dat <- na.omit(dat)
+
+head(dat)
+
+```
+
+Use dplyr to create a vector x with the bodyweight of all males on the control (chow) diet. What is the population's average?
+```{r}
+
+male_chow <- dat %>% filter(Diet == "chow" & Sex == "M") %>% select(Bodyweight) %>% unlist
+mean(male_chow)
+```
+Now use the *rafalib* package and use the *popsd* function to compute the population standard deviation.
+```{r}
+install.packages("rafalib")
+library(rafalib)
+popsd(male_chow)
+```
+Set the seed at 1. Take a random sample X of size 25 from x. What is the sample average?
+
+```{r}
+set.seed(1)
+mean(sample(male_chow,25))
+```
+Use dplyr to create a vector y with the bodyweight of all males on the high fat (hf) diet. What is this population's average?
+```{r}
+male_hf <- dat %>% filter(Sex == "M" & Diet == "hf") %>% select(Bodyweight) %>% unlist
+mean(male_hf)
+```
+```{r}
+popsd(male_hf)
+```
+```{r}
+set.seed(1)
+mean(sample(male_hf,25))
+
+```
+What is the difference in absolute value between ybar - xbar and YBAR - XBAR?
+```{r}
+ymean = mean(male_hf)
+xmean = mean(male_chow)
+set.seed(1)
+YBAR = mean(sample(male_hf,25))
+set.seed(1)
+XBAR = mean(sample(male_chow,25))
+(ymean-xmean) - (YBAR - XBAR)
+
+```
+Repeat for females:
+```{r}
+female_chow <- dat %>% filter(Sex == "F" & Diet == "chow") %>% select(Bodyweight) %>% unlist
+female_hf <- dat %>% filter(Sex == "F" & Diet == "hf") %>% select(Bodyweight) %>% unlist
+hf_mean = mean(female_hf)
+chow_mean = mean(female_chow)
+set.seed(1)
+hf_bar = mean(sample(female_hf, 25))
+set.seed(1)
+chow_bar = mean(sample(female_chow, 25))
+abs((hf_mean - chow_mean) - (hf_bar - chow_bar))
+
+```
+
+
+```{r}
+avg = mean(male_chow)
+stdev = popsd(male_chow)
+mean(male_chow < avg + 3*stdev) - mean(male_chow < avg - 3*stdev)
+
+```
+```{r}
+mypar(2,2)
+y <- filter(dat, Sex=="M" & Diet=="chow") %>% select(Bodyweight) %>% unlist
+z <- ( y - mean(y) ) / popsd(y)
+qqnorm(z);abline(0,1)
+y <- filter(dat, Sex=="F" & Diet=="chow") %>% select(Bodyweight) %>% unlist
+z <- ( y - mean(y) ) / popsd(y)
+qqnorm(z);abline(0,1)
+y <- filter(dat, Sex=="M" & Diet=="hf") %>% select(Bodyweight) %>% unlist
+z <- ( y - mean(y) ) / popsd(y)
+qqnorm(z);abline(0,1)
+y <- filter(dat, Sex=="F" & Diet=="hf") %>% select(Bodyweight) %>% unlist
+z <- ( y - mean(y) ) / popsd(y)
+qqnorm(z);abline(0,1)
+```
+```{r}
+y <- filter(dat, Sex=="M" & Diet=="chow") %>% select(Bodyweight) %>% unlist
+    avgs <- replicate(10000, mean( sample(y, 25)))
+    mypar(1,2)
+    hist(avgs)
+    qqnorm(avgs)
+    
+    sd(avgs)
+    ```
+## CLT and t-distribution Practice Exercises 
+
+Much of probability theory was originally inspired by gambling. The theory is still used in practice by casinos, for example to estimate how many people need to play slots for there to be a 99.999% chance of the house making a profit.
+
+Suppose we are interested in the proportion of times we see x==6 when rolling n=100 dice:
+```{r}
+n <- 100
+x <- sample(1:6, n, replace = TRUE)
+mean(x==6)
+```
+Because die rolls are independent, the CLT applies.
+Let's increase to n=10000. p=1/6 and by CLT variance = sd^2 = p*(1-p)/n.
+According to CLT, z = (mean(x==6)-p) / sqrt(p(1-p)/n) is a standard normal variable.
+Set the seed to 1, then use *replicate* to perform the simulation, and report what proportion of times abs(z) > 2 -- by CLT it should be roughly .05.
+```{r}
+n = 100
+B = 10000
+p = 1/6
+var = p*(1-p)/n
+
+set.seed(1)
+sixes <- replicate(B, {
+  rolls <- sample(1:6, n, replace=TRUE)
+  mean(rolls==6)
+})
+
+z = (sixes - p)/sqrt(var)
+mean(abs(z) > 2)
+```
+Use the CLT to approximate the probability that XBAR is off by more than 2g from the population average mu(X).
+```{r}
+X <- filter(dat, Diet=="chow") %>% select(Bodyweight) %>% unlist
+    Y <- filter(dat, Diet=="hf") %>% select(Bodyweight) %>% unlist
+XBAR <- mean(X)
+XSD <-sd (X)
+XSD_fraction <- XSD/sqrt(12)
+1-(pnorm(2/XSD_fraction)-pnorm(-2/XSD_fraction))
+```
+The use of the null hypothesis:
+
+We don't know actual mu_X or mu_Y (population averages).
+By CLT, we approximate the distribution of:
+
+XBAR as normal with mean sd_X/sqrt(M) (M = sample size for X)
+YBAR as normal with mean sd_Y/sqrt(N) (N = sample size for Y)
+
+We want to quantify what the data say about the possibility that the diet has no effect:
+mu_X = mu_Y
+This implies that the difference YBAR - XBAR has mean zero and SE:
+SE(YBAR - XBAR) = sqrt(sd(Y)^2/12+sd(X)^2/12)
+What is the estimate of SE(YBAR - XBAR?)
+```{r}
+XSD <- sd(X)
+YSD <- sd(Y)
+sqrt(XSD^2/12+YSD^2/12)
+```
+
+```{r}
+t.test(X,Y)
+```
+```{r}
+1-pnorm(3)
+```
+Compare female control ("chow") and treatment("hf")
+```{r}
+dat <- read.csv("femaleMiceWeights.csv")
+chow <- filter(dat, Diet=="chow") %>% select(Bodyweight) %>% unlist
+hf <- filter(dat, Diet=="hf") %>% select(Bodyweight) %>% unlist
+diff <- mean(hf) - mean(chow)
+```
+diff = observed effect size, a random variable
+
+mean(diff) = 0   SE(Xbar) = popsd/sqrt(N) = 
+
+```{r}
+sd(chow)/sqrt(length(chow))
+```
+This value is the SE of the sample average. We want SE(diff).
+
+Statistical theory tells us that the variance of the difference of two random variables is the sum of its variances, so we compute the variance and take the square root:
+```{r}
+se <- sqrt(
+  var(hf)/length(hf) + var(chow)/length(chow)
+)
+```
+Statistical theory tells us that if we divide a random variable by its SE, we get a new random variable with an SE of 1:
+```{r}
+tstat <- diff/se
+tstat
+```
+CLT tells us that for large sample sizes, tstat is approximately normal with mean = 0 and SD = 1.
+
+To calculate a p-value, we need to ask: how often does a normally distributed random variable exceed diff?
+
+Use *pnorm* to answer this question: probability that a normally distributed random variable falls below a.
+```{r}
+right_tail<- 1 - pnorm(abs(tstat))
+left_tail <- pnorm(-abs(tstat))
+pval <- left_tail + right_tail
+pval
+```
+## T-test exercises
+
+This is a large dataset (n=1236) of birth weights of babies born to smoking and non-smoking mothers. We will pretend it contains the entire population in which we are interested.
+```{r}
+babies <- read.table("babies.txt", header=TRUE)
+bwt.nonsmoke <- filter(babies, smoke==0) %>% select(bwt) %>% unlist
+bwt.smoke <- filter(babies, smoke==1) %>% select(bwt) %>% unlist
+```
+Now we can look for the true population differences in means between smoking and non-smoking birth weights.
+```{r}
+library(rafalib)
+mean(bwt.nonsmoke) - mean(bwt.smoke)
+```
+```{r}
+popsd(bwt.nonsmoke)
+```
+
+```{r}
+popsd(bwt.smoke)
+```
+Set the seed at 1 and obtain a sample from the non-smoking mothers *dat.ns* of size N=25. Then, without resetting the seed, take a sample of the same size from smoking bothers *dat.s*. Compute the t-statistic *tval*.
+```{r}
+set.seed(1)
+dat.ns = sample(bwt.nonsmoke,25)
+dat.s = sample(bwt.smoke,25)
+tval = t.test(dat.ns, dat.s)
+tval
+```
+```{r}
+
+```
+Examine the probability that the t-statistic following the null distribution would have a larger absolute value than the absolue value of the t-value we just observed
+```{r}
+1 - (pnorm(2.1209) - pnorm(-2.1209))
+```
+CLT tells us that:
+sqrt(N)*(Xbar-mu_x)/sd_x  follows a normal distribution with mean 0 and SD 1
+
+SE of Ybar-Xbar: sqrt(var(y)/length(y)+var(x)/length(x))
+
+To determine the value to add/subtract from mean for 99% CI, use Xbar +/- qnorm(.995)*SE/sqrt(N):
+
+```{r}
+s_avg <- mean(dat.s)
+ns_avg <- mean(dat.ns)
+SE = sqrt(var(dat.s)/length(dat.s) + var(dat.ns)/length(dat.ns))
+qnorm(.995)*SE
+```
+##Confidence Intervals Exercises
+
+If instead of the normal distribution we use the t-distribution on the same data set, what value would be used to generate 99% CI? Use 2*N-2 degrees of freedom. (Recall sample size N was 25.)
+```{r}
+qt(.995, df=48)*SE
+```
+Set the seed at 1 and take a random sample of N=5 measurements from each of the smoking and nonsmoking data sets. What is the p-value using the t-test function?
+```{r}
+set.seed(1)
+nonsmoker_babies <- sample(bwt.nonsmoke,5)
+smoker_babies <- sample(bwt.smoke,5)
+t.test(nonsmoker_babies,smoker_babies)
+```
+## Power Calculations Exercises
+
+We can explore the trade-off of power and Type I error concretely using the babies data. Since we have the full population, we know what the true effect size is (~8.93g) and we can compute the power of the test for true difference between populations.
+
+We can increase power by increaseing sample size or decreasing alpha (type I error rate). However, type I error rates usually are set at fixed values accepted by the community (e.g. .05 for most of biology) and generally it is better to risk false negatives (type II errors) than false positives (type I errors).
+
+Replicate the exercise above. What proportion of the time do we reject at 0.05?
+```{r}
+set.seed(1)
+rejections <- replicate(10000, {
+  nonsmoker_babies <- sample(bwt.nonsmoke,5)
+  smoker_babies <- sample(bwt.smoke,5)
+  pval = t.test(nonsmoker_babies,smoker_babies)$p.value
+  reject = pval < .05
+})
+mean(rejections)
+```
+The power is below 10%. Nasty. What sample size gives roughly 80% power: 30, 60, 90, 120?
+```{r}
+set.seed(1)
+rejections <- replicate(10000, {
+  nonsmoker_babies <- sample(bwt.nonsmoke,60)
+  smoker_babies <- sample(bwt.smoke,60)
+  pval = t.test(nonsmoker_babies,smoker_babies)$p.value
+  reject = pval < .05
+})
+mean(rejections)
+```
+Repeat with alpha of .01 - now what sample size is required for 80% power?
+```{r}
+set.seed(1)
+rejections <- replicate(10000, {
+  nonsmoker_babies <- sample(bwt.nonsmoke,90)
+  smoker_babies <- sample(bwt.smoke,90)
+  pval = t.test(nonsmoker_babies,smoker_babies)$p.value
+  reject = pval < .01
+})
+mean(rejections)
+```
+
+Imagine you are William_Sealy_Gosset and have just mathematically derived the distribution of the t-statistic when the sample comes from a normal distribution. Unlike Gosset you have access to computers and can use them to check the results.
+
+Let's start by creating an outcome.
+
+Set the seed at 1, use rnorm to generate a random sample of size 5, X1, ..., X5 from a standard normal distribution, then compute the t-statistic t = sqrt(5) Xbar s with s the sample standard deviation. What value do you observe?
+
+```{r}
+set.seed(1)
+x <- rnorm(5)
+sqrt(5) * mean(x)/sd(x)
+```
+
+You have just performed a Monte Carlo simulation using *rnorm*, a random number generator for normally distributed data. Gosset's mathematical calculation tells us that the t-statistic defined in the previous exercises, a random variable, follows a t-distribution with N - 1 degrees of freedom. Monte Carlo simulations can be used to check the theory: we generate many outcomes and compare them to the theoretical result. Set the seed to 1, generate  t-statistics as done in exercise 1. What proportion is larger than 2?
+
+```{r}
+set.seed(1)
+x <- rnorm(5)
+t.test(x)
+
+```
+

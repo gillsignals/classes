@@ -1,0 +1,111 @@
+---
+title: "MBTA Ridership Data Analysis"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Initial cleaning and analysis based on the DataCamp course "Importing and Cleaning Data in R: Case Studies" and extended by Amy Gill.
+Data was downloaded from the DataCamp course repository.
+
+```{r}
+# Load readxl
+library(readxl)
+
+# Import mbta.xlsx and skip first row: mbta
+mbta <- read_excel("data/mbta.xlsx", skip = 1)
+```
+```{r}
+str(mbta)
+```
+
+```{r}
+head(mbta, n = 20)
+```
+
+First, remove unnecessary rows and columns. Some information in this table is not relevant to monthly MBTA ridership changes (quarterly, pct chg/yr, TOTAL, row numbers).
+
+```{r}
+# Remove rows 1, 7, and 11 of mbta: mbta2
+mbta2 <- mbta[c(-1, -7, -11), ]
+
+# Remove the first column of mbta2: mbta3
+mbta3 <- mbta2[, -1]
+```
+
+Next, gather columns except mode into a month column with value thou_riders (thousand riders).
+
+```{r}
+## mbta3 is pre-loaded
+
+# Load tidyr
+library(tidyr)
+
+# Gather columns of mbta3: mbta4
+mbta4 <- gather(mbta3, month, thou_riders, -mode)
+
+# View the head of mbta4
+head(mbta4)
+```
+
+Coerce riders to numeric, then split different transit options into separate columns.
+
+```{r}
+# Coerce thou_riders to numeric
+mbta4$thou_riders <- as.numeric(mbta4$thou_riders)
+
+# Spread the contents of mbta4: mbta5
+mbta5 <- spread(mbta4, mode, thou_riders)
+
+head(mbta5)
+```
+
+Split month column into month and year.
+
+```{r}
+# Separate month column into month and year: mbta6
+mbta6 <- separate(mbta5, month, c("year", "month"))
+
+head(mbta6)
+```
+
+Check distributions of variables with *summary*.
+
+```{r}
+summary(mbta6)
+```
+
+There is an odd max value for the Boat data. Investigate distributions further with *hist* or *boxplot*.
+
+```{r}
+hist(mbta6$Boat)
+```
+
+There is a clear outlier - knowing that there are no months in which ridership significantly varied in Boston (i.e. Olympics), this is likely data entry error. Locate the error - infer that it is an added zero and correct it.
+
+```{r}
+# Find the row number of the incorrect value: i
+i <- which(mbta6$Boat == 40)
+
+# Replace the incorrect value with 4
+mbta6$Boat[i] <- 4
+
+# Generate a histogram of Boat column
+hist(mbta6$Boat)
+
+```
+
+Investigate seasonal trends in the data.
+```{r}
+library(ggplot2)
+
+# Look at Boat ridership over time 
+ggplot(mbta6, aes(x = month, y = Boat)) +  geom_point() + 
+  scale_x_discrete(name = "Month") + 
+  scale_y_continuous(name = "Avg Weekday Ridership (thousands)")
+
+```
+
+There is a clear seasonal peak to boat ridership.
