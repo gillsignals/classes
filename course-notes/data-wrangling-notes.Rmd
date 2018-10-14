@@ -1177,14 +1177,86 @@ raw_data_research_funding_rates
 We can create a list with lines of text as elements:
 ```{r}
 tab <- str_split(raw_data_research_funding_rates, "\n")
+tab <- tab[[1]]
 tab %>% head
 ```
 Info for column names is in entries three and four:
 ```{r}
-names_1 <- tab[3]
-names_2 <- tab[4]
+the_names_1 <- tab[3]
+the_names_2 <- tab[4]
 ```
 Let's start by extracting table data from the first line:
 ```{r}
-names_1
+the_names_1
+```
+Let's remove leading space and everything following the comma. Then we can obtain the elements by splitting using the space. We will split only when there are two or more spaces to avoid splitting "Success rates" using `r \\s{2,}`:
+```{r}
+the_names_1 <- the_names_1 %>%
+  str_trim() %>%
+  str_replace_all(",\\s.", "") %>%
+  str_split("\\s{2,}", simplify = TRUE)
+the_names_1
+```
+Success rate = 100%! Now let's look at the second line.
+```{r}
+the_names_2
+```
+Now we can trim the leading space and then split on one or more spaces.
+```{r}
+the_names_2 <- the_names_2 %>%
+  str_trim() %>%
+  str_split("\\s+", simplify = TRUE)
+the_names_2
+```
+There are now two character matrices we can join to generate one name for each column.
+```{r}
+tmp_names <- str_c(rep(the_names_1, each = 3), the_names_2[-1], sep = "_")
+the_names <- c(the_names_2[1], tmp_names) %>%
+  str_to_lower() %>%
+  str_replace_all("\\s", "_")
+the_names
+```
+We are now ready to get to the actual data. Examining `r tab`, we notice that the info is in lines 6 through 14. We can access it via `r str_split()`.
+```{r}
+new_research_funding_rates <- tab[6:14] %>%
+  str_trim %>%
+  str_split("\\s{2,}", simplify = TRUE) %>%
+  data.frame(stringsAsFactors = FALSE) %>%
+  setNames(the_names) %>%
+  mutate_at(-1, parse_number)
+new_research_funding_rates %>% head()
+```
+```{r}
+identical(research_funding_rates, new_research_funding_rates)
+```
+It is often useful to `r recode()` names of variables when they are long either for ease of use or clear display in graphs.
+```{r}
+data("gapminder")
+gapminder %>%
+  filter(region == "Caribbean") %>%
+  ggplot(aes(year, life_expectancy, color = country)) +
+  geom_line()
+```
+Much of the space is wasted to accommodate long country names. Here are country names 12+ long.
+```{r}
+gapminder %>%
+  filter(region == "Caribbean") %>%
+  filter(str_length(country) >= 12) %>%
+  distinct(country)
+```
+`r recode` lets us easily rename all instances of these countries.
+```{r}
+gapminder %>%
+  filter(region == "Caribbean") %>%
+  mutate(country = recode(country,
+                          "Antigua and Barbuda" = "Antigua",
+                          "Dominican Republic" = "DR",
+                          "St. Vincent and the Grenadines" = "St. Vincent",
+                          "Trinidad and Tobago" = "Trinidad")) %>%
+  ggplot(aes(year, life_expectancy, color = country)) +
+  geom_line()
+```
+There are other similar functions in the tidyverse including `r recode_factor()` and `r fct_recoder()`in the *forcats* function in the *tidyverse* package.
+```{r}
+gapminder %>% filter(region == "Middle Africa")
 ```
