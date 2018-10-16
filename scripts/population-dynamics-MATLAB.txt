@@ -1,0 +1,197 @@
+%This code runs growth models using for loops and if statements
+
+
+%Type of model to run: 1 = exponential; 2 = logistic -- student choice
+modeltype = 1;
+
+
+
+%Input parameters -- student choice
+
+N0 = 1; %Initial population size
+
+r = .1; %Population growth rate
+
+K = 100; %Carrying capacity [only pertains to logistic]
+
+t = 200; %Number of generations
+
+tau = 0; %Population response time lag [only matters for logistic]
+
+    %Time lags (a delay in when the population size affects the growth rate) 
+ 
+   %are really interesting. Try playing with increasingly large time 		    %lags and watch what happens
+
+
+
+
+%Make the "storage variables"
+
+generation = linspace(0,t,t+1);
+
+dNdt = zeros(size(generation));
+
+population = zeros(size(generation));
+
+
+
+
+%"If" statement selects appropriate model
+
+if modeltype == 1   %run the exponential growth model
+
+    for i = 1:size(generation,2)
+    
+        if i == 1   %The generation has population = N0
+
+            population(i) = N0;
+
+            dNdt(i) = r*population(i);
+
+        else
+
+            population(i) = population(i-1)+dNdt(i-1); %At the new
+
+            %timestep, the population has grown by dNdt from the previous
+
+            %generation
+
+            dNdt(i) = r*population(i);
+
+        end
+
+    end
+
+        
+
+elseif modeltype == 2   %run the logistic growth model
+
+    for i = 1:size(generation,2)
+
+        if i == 1
+
+             population(i) = N0;
+
+            dNdt(i) = r*population(i)*(1-population(i)/K);
+
+        else
+
+            if i <= tau  %If you have a time lag (tau > 0) you need this 
+                %alternate logistic equation without time lag to get you through
+                %the first few generations - use growth rate from i-1.
+
+                population(i) = population(i-1)+dNdt(i-1);
+
+                dNdt(i) = r*population(i)*(1-population(i)/K);
+
+            else
+
+                population(i) = population(i-1)+dNdt(i-1);
+
+                dNdt(i) = r*population(i)*(1-population(i-tau)/K);
+
+            end
+
+        end
+
+    end
+
+
+    
+
+else
+
+    disp('Error: Choose 1 for exponential model or 2 for logistic model')
+
+end
+
+
+
+
+%Make a plot to look at your results
+
+figure(1)
+
+plot(generation,population)
+
+xlabel('Generation')
+
+ylabel('Population Size')
+
+%Note that with the logistic model and a time lag you get multiple growth
+%rate values for the same population size (which makes sense, because
+
+%the population's growth rate depends both on its current size, and on
+
+%its size at some past time point). This results in some pretty spirals...
+
+
+
+figure(2)
+plot(population,dNdt) 
+%This plot is basically the derivative of the upper
+
+    %panel. It is useful if you want to show that the growth rate of a
+
+    %population depends upon its size. And, if you have a logistic model
+
+    %with no time lags, it gives a nice demonstration of why MSY
+
+    %(maximum sustainable yield, a fisheries concept) is at K/2.
+
+xlabel('Population Size')
+
+ylabel('Growth Rate')
+
+
+   
+
+figure(3)
+
+plot(population,dNdt./population)
+
+     %This plot allows us to see that the density
+
+     %dependence of the growth rate varies with growth model. In exponential
+
+      %growth, per capita reproduction (dNdt/N) is a constant (r). In
+
+     %logistic growth, per capita reproductive rate decreases with
+
+     %increasing population density.
+
+xlabel('Population Size')
+
+ylabel('Per Capita Growth Rate')
+
+DISCUSSION
+%Initial parameters N0=1 r=.1 K=100 t=200
+%With a time delay, the value of the current population size N, its
+%growth rate and its per capita growth rate all depend on the past values of
+%N. Experimenting with a range of parameters...initial parameters but changing
+% tau to 2, 5, 10, 20 - 3 is pretty much logistic, 5 slightly overshoots K but
+%then comes back quickly, for 10 N oscillates slightly around K with decreasing
+%amplitude converging to K and growth rate and per capita growth rate spiral
+%and converge to K, 20 is a ridiculous continuous loop for growth rate and
+%population growth rate and N oscillates stably between 1 and nearly 3N with
+%a period of 100 generations when initial growth rate  r=.1
+
+%Consider these 3 scenarios associated with lag times.
+
+%Lag time 3 - In a geographically secluded valley, a small herd of elephants
+%multiplies slowly at first, increasing in numbers more rapidly as their larger
+%herd expands into new, fertile parts of the valley. As the herd fills all
+%available grazing areas, their numbers level off.
+
+%Lag time 10 - A small flock of birds is transported by a storm to an island with
+%no native bird population and plentiful prey. Their population explodes, but quickly
+%drops as they lower the population of their prey. As the prey bounce back, so do the
+%birds, gradually reaching a new equilibrium population size.
+
+%Lag time 20 - The wolf population of a particular forest stably oscillates based on
+%the rabbit population. In one phase the rabbit population rises sharply due to
+%plentiful vegetation growth. The next it plummets as wolf populations rise and prey
+%upon them. Then the wolf population declines somewhat due to prey scarcity, allowing
+%the rabbit population to rise again.
+
+NOTE: Population models that do not explicitly incorporate lag times can also display oscillations. It's not necessary to add a time lag to a model equation when oscillation is observed in data.

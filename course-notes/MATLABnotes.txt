@@ -1,0 +1,357 @@
+MATLAB NOTES
+
+= assignment operator
+
+variables must
+-start with a letter
+-contain only letters, numbers, underscores
+-be case sensitive
+
+x = 1
+displays x = 1 and stores it in memory
+
+y1 = 3*x^2 + 2*x -6;
+end statement with ; to stop output from being shown, only store in memory
+
+ans used by default to store the answer if nothing was assigned
+pi saved in MATLAB memory
+
+3*pi^2 + 2*pi - 6
+displays ans = 29.8920
+
+
+COMPLETING A MATLAB EXERCISE
+
+embedded boxes
+framework precompleted
+gray area is not editable
+white area is editable
+run script button will make it run but not submit it
+matlab documentation available
+submit and have it graded against several checks
+
+SIMPLE DATA TYPES
+
+character array in single quotation marks
+
+myName = 'MatlabUser'
+
+arrays of numbers
+
+myNumbers = [1, 1.5, 2, 2.5, 3]
+sameNumbers = [1 : 0.5 : 3]
+
+comparison tests can be assigned to variables
+
+equalTest1 = 2 >=3
+someNumbersAreEqual = myNumbers == sameNumbers
+someNamesAreNot = myName == 'RUser'
+
+multiplesof3 = [3: 3: 30]
+x = 2;
+y = [1 :x : 20]
+z = [1: x-1: 20]
+
+Examine array comparison behavior:
+
+name1 = 'Jane';
+name2 = 'Matt';
+a = name1 == name2
+a =
+ 1x4 logical array
+ 0  1  0  0
+
+b = name2 == 'Matt'
+b =
+ 1 x 4 logical array
+ 1  1  1  1
+
+VARIABLES EXERCISES
+
+NucleotidesPerTurn = 80
+start = 'AUG'
+
+You measured fluorescence of a number of dots on a microarray chip, but your data was corrupted so you have to correct a few parts of it manually.
+
+cell_37 = 235
+fluor_threshold = 200
+over_thresh = cell_37 >= fluor_threshold
+   logical
+   1
+
+MATLAB FUNCTIONS
+
+math function
+y = f(x)
+MATLAB functions
+y = fun(x)
+[out1, out2, ...] = fun(in1, in2, ...)
+
+*MATLAB was designed for matrices
+y = sin(x), y = log10(x), y = exp(x), y = 
+mathematical functions can accept vectors or matrices as inputs
+y = sin([0, pi/2, pi, 3*pi/2, 2*pi])
+= [sin(0), sin(pi/2), sin(pi), sin(3*pi/2), sin(2*pi)
+
+Interesting things functions can do:
+return not just value that meets a criterion, but its index if appropriate
+
+[a, I] = min(v)  #  I will be index
+
+check docs
+help linspace
+
+a = sin(pi/2)
+b = asin(a)
+
+Applying a function to an argument does not change the argument.
+
+Some commonly called functions:
+xs = linspace(2,12)
+ys = linspace(1, 10, 7)
+zs = logspace(1, 2, 10)
+x0 = min( [10: (-2.2) : 4 ] )
+x1 = min( [10: (-2.2) : 4 ]' )
+myGrid1 = zeros(2,5)
+myGrid2 = zeros(1,3)
+myGrid3 = zeros(3)
+myGrid4 = magic(5)
+[x,m] = min( myGrid4, [], 2)
+
+CREATING MATRICES
+
+2D array
+row vector r = [1, 2, 3]
+c = [4; 5; 6]
+
+matrix
+a = [1, 2, 3; 4, 5, 6; 7, 8, 9]
+m = [6, 7, 89; 4, 4, 91]
+
+MATLAB originally written as a wrapper for FORTRAN to use linear algebra functions
+
+data sets are easily represented as matrices
+
+matrix1 = [2 3; 4 5]
+
+use syntax matrix(row, col) to look up a specific value
+
+matrix1(1,2)
+  3
+
+matrix1(2,1)
+  4
+
+scalar = 1x1 matrix
+
+scalar1 = [5]
+
+size(scalar1)
+
+for scalars only, you do not need brackets - you must use brackets when defining matrices with more than one value
+
+vector = 1D, 1xn matrix
+x = [-2,-1,0,1,2]
+xCol = [-2;-1;0;1;2]
+
+commas or spaces define row vectors
+semicolons define column vectors
+place an apostrophe after a vector name or after the bracket to transpose
+
+vector1 = [3,4,5]
+vector2 = [3;4;5]
+
+size(vector1)
+size(vector2)
+
+vector3 = [3 4 5]
+vector4 = vector3'
+
+vector5 = [1:100]
+
+[start_index:increment:end:index]
+
+vector6 = [100:-1:1]
+vector7 = [1:0.2:10]
+
+simple matrices where every value is the same
+zeros(row,col)
+matrix0 = zeros(3,5)
+matrix1 = ones(3,5)
+matrix2 = ones(3,5) * 2
+
+matrices of random numbers ranging from (0,1)
+matrix1 = rand(3,5)
+
+you can have 3D arrays and more - MATLAB can't display so shows 2D arrays for each instance of the third dimension
+
+matrix1 = rand(3,5,2)
+
+look up or change values with (row, column) index notation
+matrix2 = [1 2 3; 4 5 6; 7 8 9]
+matrix2(2,2) = 0
+
+You can use a colon as an index to indicate the entire row or column.
+matrix2(2,:) = 0
+matrix2(:,2) = 0
+
+Let's make a 10x10 matrix with values running from 1:100.
+Generate a vector [1:100], then reshape it into 10x10
+matrix4 = reshape([1:100],10,10)
+Oh, it's the wrong way...
+matrix5 = reshape([1:100],10,10)'
+
+OPERATIONS ON MATRICES
+
+Add matrices together - must be same dimensions
+matrix1 = [1,2;3,4] + [4,3;2,1]
+matrix2 = [1,2;3,4] - [4,3;2,1]
+
+Matrix multiplication is actually a linear algebra operation, not element-wise multiplication. Operators * and / may work depending on matrix dimensions, but the answers will not be what we expect.
+matrix3 = [1,2;3,4] * [4,3;2,1]
+matrix4 = [2,4;6,8] / [1,2;2,8]
+
+To do element-wise multiplication, use .* or ./
+matrix3 = [1,2;3,4] .* [4,3;2,1]
+matrix4 = [2,4;6,8] ./ [1,2;2,8]
+
+This also holds for raising matrices to a power, which is treated as multiplying a matrix times itself. Compare:
+matrix5 = [1,2;3,4] ^ 2
+matrix5 = [1,2;3,4] .^ 2
+
+RELATIONAL AND LOGICAL OPERATORS
+1 is true, 0 is false
+< > == & | ~(NOT)
+
+WRITING A FOR LOOP
+r = 0.02
+balance = zeros(1,100)
+balance(1) = 20000
+for k = 1:99
+	balance(k+1) = (1+r)*balance(k);
+end
+
+common good practices
+check for misspellings
+use semicolons at the end of any line for which you do not need to see the output
+strip semicolons if you don't see expected output
+
+Q: what's the sum of the first 556 multiples of 47?
+
+% accumulate a sum starting at zero
+sumSoFar = 0;
+
+% New syntax - for loops start counting at 1 until a ceiling value
+for n = 1:556
+	thisMultipleOf47 = n * 47;
+	sumSoFar = sumSoFar + thisMultipleOf47;
+end
+sumSoFar
+
+WHILE LOOPS
+when we just know we need to stop when a condition is met
+
+r=0.02;
+balance=20000;
+count = 0;
+while balance < 25000
+	balance (1+r)*balance;
+	count = count+1
+end
+
+How many multiples of 52 can you sum up before you reach 5001?
+
+% Returns the number of multiples of multOf to be summed
+% before sumCeiling is reached
+
+multOf = 52;
+sumCeiling = 5001;
+sumSoFar = 0;
+multipleIndex = 0;
+while sumSoFar < sumCeiling
+	multipleIndex = multipleIndex + 1;
+	sumSoFar = sumSoFar + (multOf * multipleIndex);
+end
+assert(sumSoFar >= sumCeiling);
+multipleIndex
+
+if-else statement
+if hours <= 1
+	fee = 0;
+else
+	fee = 5*(hours-1);
+end
+
+if hours <= 1
+	fee = 0;
+elseif hours >1 & hours < 7
+	fee = 5*(hours-1);
+else
+	fee= 35;
+end
+
+Write a program that prints the numbers 1:100, but for multiples of three print "Fizz" instead, for multiples of five print "Buzz" instead, and for multiples of both three and five print "FizzBuzz"
+
+% FIZZBUZZ
+
+for n = 1:100
+	if(mod(n,3) == 0 && mod(n,5) ==0)
+		disp('FizzBuzz');  %  disp: print
+	elseif(mod(n,3) == 0)
+		disp('Fizz');
+	elseif(mod(n,5) == 0)
+		disp('Buzz');
+	else
+		disp(num2str(n));  % num2str: numeric to string
+	end
+end
+
+Write MATLAB code that analyzes the numbers in the 2nd column of array m for whether they are odd or even. Create a column vector called oddoreven, and on the rows correspondng to rows in m enter 1 if the number is even and 0 if the number is odd. Use your understanding of loops and control flow to accomplish this task. Add the end of your code, be sure to display your oddoreven vector to check your output.
+
+You may find mod(), size(), and zeros() useful.
+
+m = csvread('test.txt',1,0);
+        
+
+%%Start coding below this point!
+
+
+% dims = dimensions of m
+dims = size(m);
+
+% rownum = number of rows in m
+
+rownum = dims(1);
+
+% create destination vector oddoreven
+
+oddoreven = zeros(rownum,1);
+
+
+% iterate over rows of m and determine whether second column of m is even
+
+for n = 1:rownum
+
+    number = m(n,2)
+
+    % if second column of m is even, oddoreven is true
+
+    if mod(number, 2) == 0
+
+        oddoreven(n) = 1;
+
+    % if second column of m is odd, oddoreven is false
+
+    else
+
+        oddoreven(n) = 0;
+
+    end
+
+end
+
+
+% return oddoreven
+
+oddoreven
+
