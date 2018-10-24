@@ -934,6 +934,11 @@ Or, more condensed:
 $$ -2.769 + 0.371 x_1 + 0.519 x_2 + 0.771 x_3 + 1.24 x_4 + 1.43 x_5$$
 Where $x_1, x_2, x_3, x_4, x_5$ are BB, singles, doubles, triples and HR respectively.
 
+```{r}
+-2.769 + 0.371 *1 + 0.519 *6 + .771 *2 + 1.24 * 1 + 1.43 * 0
+```
+
+
 To define a player-specific metric, we have to do more work as we defined our metric for teams based on team-level summary statistics. Since there are 9 batters, all 9 contribute and if we simply plug in one player we will get a significant underestimate. We need to build a team of 9 copies of whatever player we analyze - multiply outcome by 9.
 
 Furthermore, players may not play full games but it still counts as a game played, or a game might contain a different number of plate appearances per player. To get a more accurate prediction, we adjust each player's stats to per-plate-appearance rather than per-game. We then determine the average team plate-appearances-per-game and use that to multiply our player stats as well.
@@ -1032,4 +1037,77 @@ players %>%
   geom_point() +
   scale_x_log10()
 ```
-We can search for good deals by looking at players that produce many more runs than others 
+We can search for good deals by looking at players that produce many more runs than others with similar salaries. We can use this table to decide what players to pick and keep our total salary below $40 million. This can be done with _linear programming_, which we do not teach but include the code anyway:
+```{r}
+library(reshape2)
+library(lpSolve)
+
+players <- players %>%
+  filter(debut <= 1997 & debut > 1988)
+constraint_matrix <- acast(players, POS ~ playerID, fun.aggregate = length)
+# Using R_hat as value column: use value.var to override.
+npos <- nrow(constraint_matrix)
+constraint_matrix <- rbind(constraint_matrix, salary = players$salary)
+constraint_dir <- c(rep("==", npos), "<=")
+constraint_limit <- c(rep(1, npos), 50*10^6)
+lp_solution <- lp("max", players$R_hat, constraint_matrix, constraint_dir, constraint_limit, all.int = TRUE)
+```
+Our algorithm chooses these 9 players:
+```{r}
+our_team <- players %>%
+  filter(lp_solution$solution == 1) %>%
+  arrange(desc(R_hat))
+our_team %>%
+  select(nameFirst, nameLast, POS, salary, R_hat)
+```
+Our team has players above average on BB and HR, but not singles.
+
+```{r}
+my_scale <- function(x) (x-median(x))/mad(x)
+players %>% mutate(BB = my_scale(BB),
+                   singles = my_scale(singles),
+                   doubles = my_scale(doubles),
+                   triples = my_scale(triples),
+                   HR = my_scale(HR),
+                   AVG = my_scale(AVG),
+                   R_hat = my_scale(R_hat)) %>%
+  filter(playerID %in% our_team$playerID) %>%
+  select(nameFirst, nameLast, BB, singles, doubles, triples, HR, AVG, R_hat) %>%
+  arrange(desc(R_hat))
+```
+Sabermetricians have used a metric beyond batting average that they consider better because it includes walks and weights base hits by number of bases - on base plus slugging (OPS):
+
+$$\frac{\mbox{BB}}{\mbox{PA}} + \frac{\mbox{Singles} + 2 \mbox{Doubles} + 3 \mbox{Triples} + 4\mbox{HR}}{\mbox{AB}}$$
+This is impressively close to what one gets with regression:
+```{r}
+Batting %>%
+  filter(yearID %in% 1990:2001) %>%
+  group_by(playerID, yearID) %>%
+  filter(BB + AB >= 300) %>%
+  mutate(PA = BB + AB,
+         singles = (H-X2B-X3B-HR),
+         OPS = BB/PA + (singles + 2*X2B + 3*X3B + 4*HR)/AB,
+         G = PA/pa_per_game,
+         BB = BB/G,
+         singles = singles/G,
+         doubles = X2B/G,
+         triples = X3B/G,
+         HR = HR/G) %>%
+  ungroup() %>%
+  mutate(R_hat = predict(fit, newdata = .)) %>%
+  
+```
+
+
+
+
+
+
+```{r}
+library(broom)
+dat %>%
+  group_by(lgID) %>%
+  do(tidy(lm(R ~ HR, data = .), conf.int = T)) %>%
+  filter(term == "HR")
+```
+
