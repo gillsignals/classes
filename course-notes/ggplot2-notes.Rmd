@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction to Data Visualization with ggplot2 - Course 1
 
+Note some of this is copy-pasted from course rather than paraphrased - if it's in quotations, I didn't write it. Be sure to reword if using independently.
+
 •	Understand how structure of data set can help determine useful types of plots
 •	How to use elements such as color and size effectively
 •	Best plot type for accurately representing nature of data
@@ -143,5 +145,624 @@ plot(mtcars$wt, mtcars$mpg, col = mtcars$fcyl)
 
 To add a linear model to data, define a model with *lm()* and then plot the model with *abline()*.
 
+```{r}
+# Use lm() to calculate a linear model and save it as carModel
+carModel <- lm(mpg ~ wt, data = mtcars)
+
+# Basic plot
+mtcars$cyl <- as.factor(mtcars$cyl)
+plot(mtcars$wt, mtcars$mpg, col = mtcars$cyl)
+
+# Call abline() with carModel as first argument and set lty to 2
+abline(carModel, lty = 2)
+```
+
+
 To add a model for several subgroups, there are multiple options. One choice is to subset data and then calculate *lm()* and plot each subset separately. Alternatively, vectorize using *lapply()* and combine all in one step.
 
+```{r}
+# Plot each subset efficiently with lapply
+# You don't have to edit this code
+plot(mtcars$wt, mtcars$mpg, col = mtcars$cyl)
+lapply(mtcars$cyl, function(x) {
+  abline(lm(mpg ~ wt, mtcars, subset = (cyl == x)), col = x)
+  })
+
+# This code will draw the legend of the plot
+# You don't have to edit this code
+legend(x = 5, y = 33, legend = levels(mtcars$cyl),
+       col = 1:3, pch = 1, bty = "n")
+```
+Now recreate this plot in `ggplot2`.
+```{r}
+# Convert cyl to factor (don't need to change)
+mtcars$cyl <- as.factor(mtcars$cyl)
+
+# Example from base R (don't need to change)
+plot(mtcars$wt, mtcars$mpg, col = mtcars$cyl)
+abline(lm(mpg ~ wt, data = mtcars), lty = 2)
+lapply(mtcars$cyl, function(x) {
+  abline(lm(mpg ~ wt, mtcars, subset = (cyl == x)), col = x)
+  })
+legend(x = 5, y = 33, legend = levels(mtcars$cyl),
+       col = 1:3, pch = 1, bty = "n")
+
+# Convert cyl to factor (don't need to change)
+mtcars$cyl <- as.factor(mtcars$cyl)
+
+# Example from base R (don't need to change)
+plot(mtcars$wt, mtcars$mpg, col = mtcars$cyl)
+abline(lm(mpg ~ wt, data = mtcars), lty = 2)
+lapply(mtcars$cyl, function(x) {
+  abline(lm(mpg ~ wt, mtcars, subset = (cyl == x)), col = x)
+  })
+legend(x = 5, y = 33, legend = levels(mtcars$cyl),
+       col = 1:3, pch = 1, bty = "n")
+
+# Plot 1: add geom_point() to this command to create a scatter plot
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+  geom_point()  # Fill in using instructions Plot 1
+
+# Plot 2: include the lines of the linear models, per cyl
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+  geom_point() + # Copy from Plot 1
+  geom_smooth(method = "lm", se = FALSE)   # Fill in using instructions Plot 2
+
+# Plot 3: include a lm for the entire dataset in its whole
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+  geom_point() + # Copy from Plot 2
+  geom_smooth(method = "lm", se = FALSE) + # Copy from Plot 2
+  geom_smooth(aes(group = 1), method = "lm", se = FALSE, linetype = 2)   # Fill in using instructions Plot 3
+```
+
+In `ggplot2`, we can layer additional data on our graph by adding an additional `geom` layer. We don't have to make an independent call to overwrite our graph, we modify it along the way.
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+  geom_point() +
+  geom_point(aes(x = Petal.Length, y = Petal.Width), col = "red")
+```
+`ggplot2` produces an object we can manipulate, so the plotting space is adjusted. Note though that this is a convoluted way to make our plot and we can do it more easily. What we actually want is a new variable called part (sepal or petal) mapped to color, and our x and y should be length and width respectively.
+
+We can rearrange our data frame into a different wide format by creating columns species, part, length, width
+
+We have 3 variables and we map them onto three scales.
+
+iris.wide has measure split among two columns ("Length"/"Width""), a column "Part" with values Petal/Sepal, a column "Species" with values Setosa/Versicolor/Virginica
+
+iris.wide2 has species split among three columns ("Setosa"/"Versicolor"/"Virginica"), a column "Measure" with values Length/Width, a column "Part" with values "Petal"/"Sepal". You can see how this would make it difficult for us to generate the plots we have been working with up until now, as the Length/Width variables we want to use on different x/y axes are now in a single column "Measure". But you can plot with:
+```{r, eval=FALSE}
+# See how measure changes depending on the two values of part
+ggplot(iris.wide2, aes(x = Part, y = Setosa, col = Measure)) +
+  geom_jitter()
+
+# See how part changes depending on the two values of measure
+ggplot(iris.wide2, aes(x = Measure, y = Setosa, col = Part)) +
+  geom_jitter()
+
+# If we want ot see across species, though, it's tedious in this data structure: need to explicitly make 3 separate plots as they are in 3 separate columns
+ggplot(iris.wide2, aes(x = Part, y = Setosa, col = Measure)) +
+  geom_jitter()
+ggplot(iris.wide2, aes(x = Part, y = Versicolor, col = Measure)) +
+  geom_jitter()
+ggplot(iris.wide2, aes(x = Part, y = Virginica, col = Measure)) +
+  geom_jitter()
+```
+What we actually want is tidy data: each row is one observation, each column is one variable. This gives us the ability to quickly make whatever comparisons we want.
+
+iris.tidy has 4 columns: "Species", "Part", "Measure", "Value". 
+
+This makes our data accessible - we can use just one command instead of one command for each species. It also immediately lets you scale the axes to each other.
+```{r}
+# Load the tidyr package
+library(tidyr)
+
+# Fill in the ___ to produce to the correct iris.tidy dataset
+iris.tidy <- iris %>%
+  gather(key, Value, -Species) %>%
+  separate(key, c("Part", "Measure"), "\\.")
+
+ggplot(iris.tidy, aes(x = Measure, y = Value, col = Part)) +
+  geom_jitter() +
+  facet_grid(. ~ Species)
+```
+"To make iris.wide:
+Before you begin, you need to add a new column called Flower that contains a unique identifier for each row in the data frame. This is because you'll rearrange the data frame afterwards and you need to keep track of which row, or which specific flower, each value came from. It's done for you, no need to add anything yourself.
+gather() rearranges the data frame by specifying the columns that are categorical variables with a - notation. In this case, Species and Flower are categorical. Complete the command.
+separate() splits up the new key column, which contains the former headers, according to .. The new column names "Part" and "Measure" are given in a character vector.
+The last step is to use spread() to distribute the new Measure column and associated value column into two columns."
+```{r}
+# Load the tidyr package
+library(tidyr)
+
+# Add column with unique ids (don't need to change)
+iris$Flower <- 1:nrow(iris)
+
+# Fill in the ___ to produce to the correct iris.wide dataset
+iris.wide <- iris %>%
+  gather(key, value, -Species, -Flower) %>%
+  separate(key, c("Part", "Measure"), "\\.") %>%
+  spread(Measure, value)
+
+# Consider the structure of iris, iris.wide and iris.tidy (in that order)
+str(iris)
+str(iris.wide)
+str(iris.tidy)
+
+
+# Think about which dataset you would use to get the plot shown right
+# Fill in the ___ to produce the plot given to the right
+ggplot(iris.tidy, aes(x = Species, y = Value, col = Part)) +
+  geom_jitter() +
+  facet_grid(. ~ Measure)
+```
+
+```{r}
+# The 3 data frames (iris, iris.wide and iris.tidy) are available in your environment
+# Execute head() on iris, iris.wide and iris.tidy (in that order)
+head(iris)
+head(iris.wide)
+head(iris.tidy)
+
+# Think about which dataset you would use to get the plot shown right
+# Fill in the ___ to produce the plot given to the right
+ggplot(iris.wide, aes(x = Length, y = Width, color = Part)) +
+  geom_jitter() +
+  facet_grid(. ~ Species)
+```
+
+Aesthetics describes variable mapping, not visible attributes of the plot. Aesthetics mapping refers to mapping variables from our data frames to x/y axes, color, fill, alpha transparency, shape, size, linetype, labels. It does not refer to changing an attribute of an entire plot like the color of all points. 
+
+`x` = x axis position
+`y` = y axis position
+`colour` = colour of dots, outlines of other shapes
+`fill` = fill colour
+`size` = diameter of points, thickness of lines
+`alpha` = transparency
+`linetype` = line dash pattern
+`labels` = text on a plot or axes
+`shape` = point shape
+```{r}
+# point color is an attribute here
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+  geom_point(col = "red") 
+```
+```{r}
+# point color maps the species variable to color aesthetic here
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point()
+```
+"A data frame column is mapped to the aesthetic.
+Aesthetics are called within `ggplot(aes())` while attributes are called separately within later layers like `geom_point()`. Later layers can be given their own `aes()` if necessary, but this is typically only done if we are layering multiple data sources. The biggest beginner mistake is misplacing aesthetic/attribute calls, and related is having data structures in tidy format.
+
+The mtcars data frame is available in your workspace. For each of the following four plots, use geom_point():
+
+1 - Map mpg onto the x aesthetic, and cyl onto the y.
+2 - Reverse the mappings of the first plot.
+3 - Map wt onto x, mpg onto y, and cyl onto color.
+Modify the previous plot by changing the shape argument of the geom to 1 and increase the size to 4. These are attributes that you should specify inside geom_point()."
+
+```{r}
+# 1 - Map mpg to x and cyl to y
+ggplot(mtcars, aes(x = mpg, y = cyl)) +
+  geom_point()
+  
+# 2 - Reverse: Map cyl to x and mpg to y
+ggplot(mtcars, aes(x = cyl, y = mpg)) +
+  geom_point()
+
+# 3 - Map wt to x, mpg to y and cyl to col
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+  geom_point()
+
+# 4 - Change shape and size of the points in the above plot
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+  geom_point(shape = 1, size = 4)
+
+```
+"The color aesthetic typically changes the outside outline of an object and the fill aesthetic is typically the inside shading. However, as you saw in the last exercise, geom_point() is an exception. Here you use color, instead of fill for the inside of the point. But it's a bit subtler than that - it depends on the shape of the point.
+
+**Which shape to use?** The default `geom_point()` uses `shape = 19` (a solid circle with an outline the same colour as the inside). Good alternatives are shape = 1 (hollow) and shape = 16 (solid, no outline). These all use the col aesthetic (don't forget to set alpha for solid points).
+
+A really nice alternative is `shape = 21` which allows you to _use both fill for the inside and col for the outline_! This is a great little trick for when you want to map two aesthetics to a dot.
+
+What happens when you use the wrong aesthetic mapping? This is a very common mistake! The code from the previous exercise is in the editor. Using this as your starting point complete the instructions."
+```{r}
+mtcars$cyl <- as.factor(mtcars$cyl)
+mtcars$am <- as.factor(mtcars$am)
+
+
+# am and cyl are factors, wt is numeric
+class(mtcars$am)
+class(mtcars$cyl)
+class(mtcars$wt)
+
+# From the previous exercise
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+  geom_point(shape = 1, size = 4)
+
+# 1 - Map cyl to fill
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl)) +
+  geom_point(shape = 1, size = 4)
+
+# 2 - Change shape and alpha of the points in the above plot
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl)) +
+  geom_point(shape = 21, alpha = 0.6, size = 4)
+
+
+# 3 - Map am to col in the above plot
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl, col = am)) +
+  geom_point(shape = 21, alpha = 0.6, size = 4)
+
+```
+Note that mapping a variable onto fill only changes colors if the shape used has a fill attribute. If your colors/fills don't work as expected, remember this about shapes. Also remember alpha blending whenever you use a solid color as overplotting is routine.
+
+Try out different aesthetics to see what is clearest with your data set.
+```{r}
+# Map cyl to size
+ggplot(mtcars, aes(x = wt, y = mpg, size = cyl)) +
+geom_point()
+
+
+# Map cyl to alpha
+ggplot(mtcars, aes(x = wt, y = mpg, alpha = cyl)) +
+geom_point()
+
+
+# Map cyl to shape 
+ggplot(mtcars, aes(x = wt, y = mpg, shape = cyl)) +
+geom_point()
+
+
+# Map cyl to label
+ggplot(mtcars, aes(x = wt, y = mpg, label = cyl)) +
+geom_text()
+
+```
+"In the video you saw that you can use all the aesthetics as attributes. Let's see how this works with the aesthetics you used in the previous exercises: x, y, color, fill, size, alpha, label and shape.
+
+This time you'll use these arguments to set attributes of the plot, not aesthetics. However, there are some pitfalls you'll have to watch out for: these attributes can overwrite the aesthetics of your plot!
+
+A word about shapes: In the exercise "All about aesthetics, part 2", you saw that shape = 21 results in a point that has a fill and an outline. Shapes in R can have a value from 1-25. Shapes 1-20 can only accept a color aesthetic, but shapes 21-25 have both a color and a fill aesthetic. See the pch argument in par() for further discussion.
+
+A word about hexadecimal colours: Hexadecimal, literally "related to 16", is a base-16 alphanumeric counting system. Individual values come from the ranges 0-9 and A-F. This means there are 256 possible two-digit values (i.e. 00 - FF). Hexadecimal colours use this system to specify a six-digit code for Red, Green and Blue values ("#RRGGBB") of a colour (i.e. Pure blue: "#0000FF", black: "#000000", white: "
+```{r}
+# Define a hexadecimal color
+my_color <- "#4ABEFF"
+
+# Draw a scatter plot with color *aesthetic*
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl)) +
+geom_point()
+
+# Same, but set color *attribute* in geom layer 
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+geom_point(color = my_color)
+
+# Set the fill aesthetic; color, size and shape attributes
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl)) +
+geom_point(size = 10, shape = 
+23, color = my_color)
+```
+```{r}
+# Expand to draw points with alpha 0.5
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl)) +
+geom_point(alpha = 0.5)
+  
+# Expand to draw points with shape 24 and color yellow
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl)) +
+geom_point(shape = 24, color = "yellow")
+  
+# Expand to draw text with label rownames(mtcars) and color red
+ggplot(mtcars, aes(x = wt, y = mpg, fill = cyl)) +
+geom_text(label = rownames(mtcars), color = "red")
+```
+```{r}
+# Map mpg onto x, qsec onto y and factor(cyl) onto col
+ggplot(mtcars, aes(x = mpg, y = qsec, col = factor(cyl))) +
+geom_point()
+
+# Add mapping: factor(am) onto shape
+ggplot(mtcars, aes(x = mpg, y = qsec, col = factor(cyl), shape = factor(am))) +
+geom_point()
+
+# Add mapping: (hp/wt) onto size
+ggplot(mtcars, aes(x = mpg, y = qsec, col = factor(cyl), shape = factor(am), size = (hp/wt))) +
+geom_point()
+```
+We can modify aesthetics in several ways.
+Positions:
+-identity (default) - value in df is exact pos in plot
+-dodge
+-stack
+-fill
+-jitter
+-jitterdodge
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point() # equiv geom_point(position = "identity")
+```
+In the identity view, overplotting can obscure some data points. `jitter` adds some random noise on both the x and y axis to reveal points of high density.
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point(position = "jitter")
+```
+Position can be specified as an attribute or with a function call before the ggplot call. If we do it this way, we define the amount of jitter consistently and can have it remain the same across plots:
+```{r}
+posn.j <- position_jitter(width=0.1)
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point(position = posn.j)
+```
+scale_[aesthetic] functions let you adjust the scale used by variables in various aesthetic slots. The 3rd part refers to the type of data, continuous or discrete (categorical). The first argument is always the name of the variable to scale, and additional arguments can be specified (limits, breaks, expand, label).
+
+`limits` = axis range
+`breaks` = break lines on axis
+`expand` = adds some space between axis and data
+`labels` = edits category names
+
+If we just want to quickly change the axis labels, we can use `labs`.
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point(position = "jitter") +
+  scale_x_continuous("Sepal Length", limits = c(2,8), breaks = seq(2,8,3), expand = c(0,0)) + 
+  scale_color_discrete("Species", labels = c("Setosa", "Versicolor", "Virginica")) +
+  labs(y = "Sepal Width")
+```
+```{r}
+# The base layer, cyl.am, is available for you
+cyl.am <- ggplot(mtcars, aes(x = factor(cyl), fill = factor(am)))
+
+# Add geom (position = "stack" by default)
+cyl.am + 
+  geom_bar()
+
+# Fill - show proportion
+cyl.am + 
+  geom_bar(position = "fill")  
+
+# Dodging - principles of similarity and proximity
+cyl.am +
+  geom_bar(position = "dodge") 
+
+# Clean up the axes with scale_ functions
+val = c("#E41A1C", "#377EB8")
+lab = c("Manual", "Automatic")
+cyl.am +
+  geom_bar(position = "dodge") +
+  scale_x_discrete("Cylinders") + 
+  scale_y_continuous("Number") +
+  scale_fill_manual("Transmission", 
+                    values = val,
+                    labels = lab) 
+```
+"Setting a dummy aesthetic
+In the last chapter you saw that all the visible aesthetics can serve as attributes and aesthetics, but I very conveniently left out x and y. That's because although you can make univariate plots (such as histograms, which you'll get to in the next chapter), a y-axis will always be provided, even if you didn't ask for it.
+
+In the base package you can make univariate plots with stripchart() (shown in the viewer) directly and it will take care of a fake y axis for us. Since this is univariate data, there is no real y axis.
+
+You can get the same thing in ggplot2, but it's a bit more cumbersome. The only reason you'd really want to do this is if you were making many plots and you wanted them to be in the same style, or you wanted to take advantage of an aesthetic mapping (e.g. colour)."
+```{r}
+# 1 - Create jittered plot of mtcars, mpg onto x, 0 onto y as a dummy aesthetic
+ggplot(mtcars, aes(x = mpg, y = 0)) +
+  geom_jitter()
+
+# 2 - Add function to change y axis limits
+ggplot(mtcars, aes(x = mpg, y = 0)) +
+  geom_jitter() +
+  scale_y_continuous(limits = c(-2,2))
+
+```
+How to choose your aesthetic?
+-Be creative, but follow clear guidelines
+-Jacques Bertin - The Semiology of Graphics, 1967
+-William Cleveland - research on perception of visual elements
+-In a worthwhile plot that serves its purpose, form follows function
+-What's your function?
+-If it's for yourself or other specialists, you are looking mainly to _explore_ data and _confirm and analyze_.
+-If it's for the reader or a public audience, you are looking to _explain_ data and _inform and persuade_.
+-Remember you are not just making pretty plots but in accurately and effectively conveying conclusions about data.
+-If your plot confuses the reader, or is made only to impress them with overwhelming data, it is not functional. Many overly complex figures suffer from this problem - creators haven't considered the intended audience and purpose of the plot.
+-Our plots are made by following a protocol of encoding data in numbers and text into a visual medium - this is then decoded to form an image of the data.
+-Our choice of visual aesthetics (x, y, color, fill, size, alpha, linetype, labels, shape) will depend on which are best decoded by viewers and on variable type.
+-Efficiency in decoding means: for ourselves we get an accurate picture of the data, and for the audience it's an effective way to get our point across.
+
+For CONTINUOUS variables - decoding efficiency:
+(adapted from Wong, B, Nat Meth 7(9) 2010, p665)
+-position on a common scale
+-color can be coerced to continuous, but it's pretty impractical a lot of the time - hard to see differences in worst case, readers could misinterpret in best case
+-most efficient to least efficient accuracy of decoding:
+--BEST
+-position on common scale
+-position on same but unaligned scale
+-length
+-angle
+-area (size of point)
+-grayscale spectrum
+-monochromatic spectrum
+-color spectrum
+--WORST
+
+For categorical variables - less strict because finite set of categories, but some are still easier to decode than others. Also no need for redundancy in aesthetics, color and shape doing same thing for example.
+
+For CATEGORICAL variables - decoding efficiency:
+(adapted from Wong, B, Nat Meth 7(9) 2010, p665)
+--BEST
+-qualitative color set
+-line color
+-labels
+-sequential colors (sensible for ordinals)
+-shape outlines (circles always preferred to edged shapes)
+-line type
+-filled shapes
+-hatching/shading
+-line width
+--WORST
+
+-Always aim to remove unnecessary visual information to avoid confusing the reader. (Of course, not filtering out real data!)
+
+Account for other factors to make your graphs more readable. _Overplotting_ is key to consider in scatter plots and is especially prominent with:
+-large data sets
+-imprecise data so points are not clearly separated
+-interval data (similar - data appears at fixed values)
+-aligned data values on a single axis
+
+When you have solid shapes, always use alpha blending (transparency) to see overplotted data.
+```{r}
+# Basic scatter plot: wt on x-axis and mpg on y-axis; map cyl to col
+ggplot(mtcars, aes(x = wt, y = mpg, color = cyl)) +
+geom_point(size = 4)
+
+
+# Hollow circles - an improvement
+ggplot(mtcars, aes(x = wt, y = mpg, color = cyl)) +
+geom_point(size = 4, shape = 1)
+
+
+# Add transparency - very nice
+ggplot(mtcars, aes(x = wt, y = mpg, color = cyl)) +
+geom_point(size = 4, alpha = 0.6)
+
+```
+
+```{r}
+# Scatter plot: carat (x), price (y), clarity (color)
+ggplot(diamonds, aes(x = carat, y = price, color = clarity)) +
+geom_point()
+
+# Adjust for overplotting
+ggplot(diamonds, aes(x = carat, y = price, color = clarity)) +
+geom_point(alpha = 0.5)
+
+# Scatter plot: clarity (x), carat (y), price (color)
+ggplot(diamonds, aes(x = clarity, y = carat, color = price)) +
+geom_point(alpha = 0.5)
+
+# Dot plot with jittering
+ggplot(diamonds, aes(x = clarity, y = carat, color = price)) +
+geom_point(alpha = 0.5, position = "jitter")
+
+```
+## Geometries
+
+The geometry determines how the plot will actually look. There are currently 37 different geometries available. What is the best tool for the job?
+
+Geometries: abline, area, bar, bin2d, blank, boxplot, contour, crossbar, density, density2d, dotplot, errorbar, errorbarh, freqpoly, hex, histogram, hline, jitter, line, linerange, map, path, point, pointrange, polygon, quantile, raster, rect, ribbon, rug, segment, smooth, step, text, tile, violin, vline
+
+Each geom can be acccessed by its own `geom_` call, and each geom has specific aesthetic mappings.
+
+Ultimately it's your job as a domain specialist to know the answer to that, but there are basic scicomm principles that apply across dataviz you can use as guidelines.
+
+Here we introduce 3 basic plot types that are very effective: scatter plots (`point`, `jitter`, `abline`), bar plots (`histogram`, `bar`, `errorbar`), line plots (`line`)
+
+`geom_point` - scatter plot, essential aes: x,y, optional aes/attributes: alpha, color, fill, shape, size
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point()
+```
+You can also specify aesthetics for a given geom inside the geom layer:
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) +
+  geom_point(aes(col = Species))
+```
+This means we can control the aesthetic mappings of each layer independently, which is key when we start stacking layers.
+
+We can also specify data within our geom layer.
+```{r}
+head(iris)
+```
+```{r}
+?aggregate
+iris.summary <- aggregate(iris[1:4], by = list(iris$Species), mean)
+names(iris.summary)[1] <- "Species"
+iris.summary
+```
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point() + # inherits data, aes from ggplot
+  geom_point(data = iris.summary, shape = 15, size = 5) # new data
+# both plots share same aes(), just changes in data and attributes
+```
+Shapes can be used to define different data sets. Shapes 0-20 have only color; shapes 21-25 have both color and fill. 
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point() +
+  # shape color inherited, shape fill specified
+  geom_point(data = iris.summary,
+             shape = 21, size = 5, fill = "#00000080")
+```
+To add crosshairs, use `geom_vline` to add vertical bars and/or `geom_hline` to add horizontal bars.
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point() +
+  # geom_vline requires xintercept aesthetic
+  geom_vline(data = iris.summary,
+             aes(xintercept = Sepal.Length)) +
+  # geom_hline requires yintercept aesthetic
+  geom_hline(data = iris.summary,
+             aes(yintercept = Sepal.Width))
+```
+Note that color didn't get inherited for `geom_vline`, `geom_hline` so we will need to redefine it. We can also change the linetype.
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_point() +
+  # geom_vline requires new color aesthetic
+  geom_vline(data = iris.summary, linetype = 2,
+             aes(xintercept = Sepal.Length, col = Species)) +
+  # geom_hline requires new color aesthetic
+  geom_hline(data = iris.summary, linetype = 2,
+             aes(yintercept = Sepal.Width, col = Species))
+```
+`ggplot2` can also calculate statistics for us. Furthermore, it's not really appropriate to plot the mean without some measurement of spread such as standard deviation, so there is still a lot to do with these plots -- we will discuss in the next course in the statistics layer.
+
+In the past, we used `geom_point(position = "jitter")`. We can also use the layer `geom_jitter` directly, which is just a wrapper for the above call.
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_jitter()
+```
+Don't forget alpha blending as an extra attribute to handle overplotting!
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_jitter(alpha = 0.6)
+```
+Using transparent circles with `shape = 1` also aids in perception of overplotting when combined with jitter.
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_jitter(shape = 1)
+```
+It's always recommended to optimize the shape, size and alpha blending. Consider the large diamonds data set:
+```{r}
+ggplot(diamonds, aes(carat, price)) +
+  geom_point()
+```
+If we change the alpha, alpha and size, or alpha and shape we get a plot that is easier to perceive, read and interpret with a more detailed view of the data. This is clearly what we want in a good data visualization.
+```{r}
+ggplot(diamonds, aes(carat, price)) +
+  geom_point(alpha = 0.3, shape = ".")
+```
+In some cases, `geom_point` does not make a scatter plot. For example, here y = wt is a continuous variable, but x = cyl is a categorical variable. This leads to overplotting since the points for each category are overlaid on a single x position.
+```{r}
+ggplot(mtcars,aes(x = cyl, y = wt)) +
+  geom_point()
+```
+One solution is `geom_jitter()` but other solutions are available.
+```{r}
+# Solutions:
+# 1 - With geom_jitter()
+ggplot(mtcars, aes(x = cyl, y = wt)) +
+  geom_jitter()
+```
+The default produced by `geom_jitter` has too much width per group. Let's adjust it down to make it more useful.
+```{r}
+# 2 - Set width in geom_jitter()
+ggplot(mtcars, aes(x = cyl, y = wt)) +
+  geom_jitter(width = 0.1)
+```
+We can also specify jitter and its width within `geom_point`.
+```{r}
+# 3 - Set position = position_jitter() in geom_point() ()
+ggplot(mtcars, aes(x = cyl, y = wt)) +
+  geom_point(position = position_jitter(0.1))
+```
+Each data set is different. Sometimes changing shape is effective, others not. Alpha blending and jitter are good go-tos.
