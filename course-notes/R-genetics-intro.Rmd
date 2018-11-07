@@ -1,0 +1,288 @@
+---
+title: "Untitled"
+author: "Amy Gill"
+date: "November 6, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+source('data/qbwRModule.R')
+```
+
+
+```{r }
+myvec = c(1,5,6,223,5,16)
+myvec
+```
+
+```{r}
+sort(myvec)
+rev(myvec)
+duplicated(myvec)
+```
+
+```{r}
+mymat = matrix(myvec, nrow = 2)
+mymat
+```
+
+```{r}
+tmat = t(mymat)
+tmat
+```
+
+```{r}
+summat = mymat + mymat
+summat
+```
+
+```{r}
+summat[1,2]
+```
+
+```{r}
+prodmat = mymat %*% tmat
+prodmat
+```
+```{r}
+y = rnorm(25)
+plot(y)
+```
+
+```{r}
+sum(y)
+sum(y)/25
+mean(y)
+```
+```{r}
+hist(y)
+abline(v = mean(y), col = "red")
+```
+
+```{r}
+y = rnorm(1000)
+plot(y, ylab = "y axis label goes here")
+abline(h = mean(y), col = "red")
+sdabove = mean(y) + sd(y)
+sdbelow = mean(y) - sd(y)
+abline(h = sdabove, col = "orange")
+abline(h = sdbelow, col = "orange")
+```
+
+```{r}
+count(y, sdbelow, sdabove)/1000
+```
+
+```{r}
+
+```
+```{r}
+mean(lowtemp)
+mean(hightemp)
+```
+
+```{r}
+plotsidebyside(lowtemp, hightemp, "low", "high", "Thorax length (mm)")
+```
+
+```{r}
+boxplot(lowtemp, hightemp, names = c("low", "high"), ylab = "Thorax Length (mm)", xlab = "Temperature Condition")
+```
+
+```{r}
+data.sim = sim(1,200)
+names(data.sim)
+```
+
+```{r}
+head(data.sim$xvals)
+```
+```{r}
+head(data.sim$yvals)
+```
+
+```{r}
+plot(data.sim$xvals, data.sim$yvals)
+```
+
+```{r}
+plot(jitter(data.sim$xvals), data.sim$yvals, col="grey")
+```
+
+```{r}
+plot(jitter(data.sim$xvals), data.sim$yvals, col="grey")
+m = mean(data.sim$yvals)
+s = sem(data.sim$yvals)
+below = m-2*s
+above = m+2*s
+points(1,m,pch="x")
+errorbars(above,below)
+```
+
+```{r}
+nsamples = 100
+samplesize = 25
+datasets = sim(nsamples, samplesize)
+datasets$yvals
+```
+```{r}
+plot(datasets$xvals, datasets$yvals, col="grey")
+col.means = colMeans(datasets$yvals)
+col.sems = sem(datasets$yvals)
+points(1:nsamples, col.means, pch="x")
+col.lowers = col.means - 2*col.sems
+col.uppers = col.means + 2*col.sems
+colors = errorbarcolors(col.uppers, col.lowers)
+errorbars(col.uppers, col.lowers, col=colors)
+abline(h=0, col="red")
+print(count(0, col.lowers, col.uppers)/nsamples)
+```
+
+```{r}
+fly.means = c(mean(lowtemp), mean(hightemp))
+fly.sems = c(sem(lowtemp), sem(hightemp))
+fly.lower = fly.means - 2*fly.sems
+fly.upper = fly.means + 2*fly.sems
+plot(c(1,2), fly.means, ylim = c(0.9,1.2))
+errorbars(fly.lower, fly.upper)
+
+```
+```{r}
+hist(lowtemp)
+```
+
+```{r}
+hist(hightemp)
+```
+```{r}
+t.test(lowtemp, hightemp)
+```
+
+```{r}
+t.test(lowtemp, mu=1)
+t.test(hightemp, mu=1)
+```
+
+```{r}
+nsim = 1000
+samplesize = 50
+wildtype.mean = 300
+wildtype.sd = 25
+wildtype = sim(nsim, samplesize, wildtype.mean, wildtype.sd)
+
+wildtype.col.means = colMeans(wildtype$yvals)
+
+mutant = rnorm(samplesize, mean=290, sd = wildtype.sd)
+
+print(mean(mutant) < 300)
+print(t.test(mutant, mu=300, alternative="less")$p.value)
+print(count(wildtype.col.means, 0, mean(mutant))/nsim)
+```
+
+```{r}
+wilcox.test(wildtype.col.means,mutant)$p.value
+wilcox.test(wildtype.col.means,mutant, alternative = "less")$p.value
+wilcox.test(wildtype.col.means,mutant, alternative = "greater")$p.value
+```
+
+## Predicting Disease Prognosis From Data
+
+For this exercise, we are going to use data from 92 breast cancers with mRNA levels for 13,654 genes
+```{r}
+patient.data = getPatientData()
+getMrnaData<-function() as.matrix(read.table('http://files.edx.org/MITx/7.QBWx/7qbwx_mrnaData.tab',sep='\t',as.is=T,header=T,row.names=1,fill=T)[,-missingpats])
+mrna.data <- getMrnaData()
+
+head(mrna.data)
+
+```
+
+```{r}
+dim(mrna.data)
+dim(patient.data)
+head(patient.data)
+```
+
+Each of the 92 rows of patient.data represents a single patient. The first column represents breast cancer subtype, second represents survival, and third represents follow up time.
+
+Each column of mrna.data represents a tumor and each row represents an mRNA.
+```{r}
+sd(mrna.data[1,])
+```
+```{r}
+all.sds = getAllRowStd(mrna.data)
+head(all.sds)
+```
+
+If we are interested in which genes vary the most, we sort genes by sd:
+```{r}
+sorted.sds = sort(all.sds, decreasing = T)
+head(sorted.sds)
+```
+
+```{r}
+sorted.sds[2000]
+```
+
+```{r}
+#order matrix by top differentially expressed genes
+sorted.order = order(all.sds, decreasing = TRUE)
+sorted.matrix = mrna.data[sorted.order,]
+
+#Heat map the top 10 differentially expressed genes
+pheatmap(sorted.matrix[1:10,],scale="row")
+```
+"scale" normalizes values such that each row (gene) has a mean around zero. 
+
+Genes that cluster together have been found to be part of similar biological processes. Patients that cluster together often have similar disease characteristics.
+
+To get a better sense of how these gense vary across patients we include patient variables scanned in earlier. First, we get variable of interest, in this case tumor subtype. Then when we cluster we can see the patients clustering together: the 10 genes behave differently in the basal subtype than in other breast cancer subtypes.
+```{r}
+ts=subset(patient.data,select='Tumor.subtype')
+pheatmap(sorted.matrix[1:10,],annotation=ts,scale='row')
+
+```
+
+Let's try to identify genes correlated with specific cancer subtypes or with patient survival. To do this, we need more statistics. **Pearson correlation** measures the similarity between two vectors and is computed with `cor`.
+```{r}
+x = rnorm(100)
+y1 = x
+y2 = x + rnorm(100)
+y3 = rnorm(100)
+par(mfcol = c(3,1))
+plot(x, y1, main=cor(x,y1))
+plot(x, y2, main=cor(x,y2))
+plot(x, y3, main=cor(x,y3))
+```
+
+We can use correlation statistics to identify genes in the array that best correlate with a patient's likelihood of survival. First, we create a numeric vector representing patients in the study. A 1 means the patient survived and the 0 means not:
+```{r}
+life.vector <- rep(0, ncol(mrna.data))
+life.vector[which(patient.data[,2]=="Alive")] = 1
+head(life.vector)
+cor(sorted.matrix[1,],life.vector)
+```
+Because we are interested in genes that are both correlated and anticorrelated, we compute the square of the correlation for each gene using `apply`.
+```{r}
+all.cors <- matrixToVectorSqCor(sorted.matrix,life.vector)
+head(all.cors)
+```
+
+Because we are searching for highly correlated genes, we can use the `order` function to sort:
+```{r}
+cor.matrix = sorted.matrix[order(all.cors,decreasing=T),]
+```
+Then we can use the heatmap to plot these genes to see if patients who survive cluster together. We subset on patient death status and then plot:
+```{r}
+surv = subset(patient.data, select="Death.status")
+surv
+```
+```{r}
+pheatmap(cor.matrix[1:50,], annotation=surv, fontsize=8, cellheight=9, scale="row")
+```
+
