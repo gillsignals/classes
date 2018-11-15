@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction to Data Visualization with ggplot2 - Course 1
+## Introduction to Data Visualization with ggplot2
 
 Note some of this is copy-pasted from course rather than paraphrased - if it's in quotations, I didn't write it. Be sure to reword if using independently.
 
@@ -309,6 +309,8 @@ ggplot(iris.wide, aes(x = Length, y = Width, color = Part)) +
   geom_jitter() +
   facet_grid(. ~ Species)
 ```
+
+## Aesthetics
 
 Aesthetics describes variable mapping, not visible attributes of the plot. Aesthetics mapping refers to mapping variables from our data frames to x/y axes, color, fill, alpha transparency, shape, size, linetype, labels. It does not refer to changing an attribute of an entire plot like the color of all points. 
 
@@ -641,7 +643,7 @@ ggplot(diamonds, aes(x = clarity, y = carat, color = price)) +
 geom_point(alpha = 0.5, position = "jitter")
 
 ```
-## Geometries
+## Geometries - Scatter plots
 
 The geometry determines how the plot will actually look. There are currently 37 different geometries available. What is the best tool for the job?
 
@@ -766,3 +768,1607 @@ ggplot(mtcars, aes(x = cyl, y = wt)) +
   geom_point(position = position_jitter(0.1))
 ```
 Each data set is different. Sometimes changing shape is effective, others not. Alpha blending and jitter are good go-tos.
+
+## Geometries - Histograms
+
+Several bar plot types can be useful. One key type is `geom_histogram`. It uses a slightly different binning algorithm than the base `hist` function, but otherwise it behaves essentially the same and displays a plot of the statistical function that generates a histogram. With `geom_histogram`, there is always a message to let you know what settings were applied.
+```{r}
+ggplot(iris, aes(x = Sepal.Width)) +
+  geom_histogram()
+```
+The `binwidth` used here defaulted to range/30, which in this case is fairly small:
+```{r}
+diff(range(iris$Sepal.Width)) / 30
+```
+There are many ways to choose the binning statistic, but no single best way - you need to use some common sense and some trial and erro. A small change to 0.1 is better already:
+```{r}
+ggplot(iris, aes(x = Sepal.Width)) +
+  geom_histogram(binwidth = 0.1)
+```
+`geom_histogram` also calculates density, or proportion of data in each interval. We can get access to this data by calling `geom_histogram(aes(y = ..density..))`. The .. syntax tells `ggplot` to look for this variable in the internal data frame rather than in the larger external scope of the document. By default, the y aesthetic is set to `y = ..count..` rather than the proportional frequency.
+```{r}
+ggplot(iris, aes(x = Sepal.Width)) +
+  geom_histogram(aes(y = ..density..), binwidth = 0.1)
+```
+The shape of the histogram is not changed at all by switching from count to density, but the y-axis is relabeled.
+
+We can color our bars based on the three species in our data set, but we need to use fill rather than color for bars.
+```{r}
+ggplot(iris, aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1)
+```
+The default is that the bars are stacked on top of each other, not overlapping.
+
+We have some other options. We can `position = "dodge"` our bars, which means to offset the categories:
+```{r}
+ggplot(iris, aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1, position = "dodge")
+```
+Sometimes dodging is the right call. In this case, this is still hard to read because the number of categories makes it difficult to see what is happening.
+
+`position = "fill"` normalizes each bin to represent the proportion of observations per bin taken by each category:
+```{r}
+ggplot(iris, aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1, position = "fill")
+```
+Note that the y-axis should say proportion, not count, but it does not automatically change. We can change it manually.
+```{r}
+ggplot(iris, aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1, position = "fill") +
+  labs(y = "proportion")
+```
+## Geometries - Bar Plots
+
+Basic bar plots can be made with `geom_bar`. Again, stack, dodge and fill positions are available. Bar plots commonly depict either absolute counts or distributions.
+
+We can use stats calculated within our data set, or `ggplot2` can calculate them for us. To plot raw values, use `geom_bar(stat = "identity")`. Histograms are made with `stat = "bin"`.
+
+There is an extra geom for making error bars, `geom_errorbar`. It has specific geoms that need to be specified: ymin and ymax. For example: `geom_errorbar(aes(ymin = avg - stdev, ymax = avg + stdev))`.
+
+Beware of using "dynamite plots", or bar plots with error bars. These often obscure more data than they reveal. They show only means and standard deviations or standard errors, which is an inefficient use of space. It is much more informative to show dot plots, boxplots if necessary for large data sets, or some visualization that shows the distribution of the data. Dynamite plots are not a conventional statistical graphic that should be used in reporting scientific results.
+
+```{r}
+# 1 - Make a univariate histogram
+ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram()
+
+# 2 - Plot 1, plus set binwidth to 1 in the geom layer
+ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram(binwidth = 1)
+
+# 3 - Plot 2, plus MAP ..density.. to the y aesthetic (i.e. in a second aes() function)
+ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram(aes(y = ..density..), binwidth = 1)
+
+# 4 - plot 3, plus SET the fill attribute to "#377EB8"
+ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram(aes(y = ..density..), binwidth = 1, fill = "#377EB8")
+
+```
+
+```{r}
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  geom_bar() +
+  labs(x = "cyl", fill = "am")
+
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  geom_bar(position = "stack") +
+  labs(x = "cyl", fill = "am")
+
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  geom_bar(position = "dodge") +
+  labs(x = "cyl", fill = "am")
+
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  geom_bar(position = "fill") +
+  labs(x = "cyl", fill = "am")
+```
+With dodging, you can adjust the dodging so that bars partially overlap each other.
+```{r}
+# 1 - The last plot form the previous exercise
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  labs(x = "cyl", fill = "am") +
+  geom_bar(position = "dodge")
+
+# 2 - Define posn_d with position_dodge()
+posn_d <- position_dodge(width = 0.2)
+
+# 3 - Change the position argument to posn_d
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  labs(x = "cyl", fill = "am") +
+  geom_bar(position = posn_d)
+
+
+# 4 - Use posn_d as position and adjust alpha to 0.6
+ggplot(mtcars, aes(x = as.factor(cyl), fill = as.factor(am))) +
+  labs(x = "cyl", fill = "am") +
+  geom_bar(position = posn_d, alpha = 0.6)
+
+
+```
+Overlapping histograms pose similar problems to overlapping bar plots, but they offer the unique solution of a _frequency polygon_. This is a geom specific to binned data that draws a line connecting the value of each bin. Like `geom_histogram`, it takes a `binwidth` argument and, by default, uses `stat = "bin"` and `position = "identity"`.
+```{r}
+# A basic histogram, add coloring defined by cyl
+ggplot(mtcars, aes(mpg, fill = as.factor(cyl))) +
+  geom_histogram(binwidth = 1)
+
+# Change position to identity
+ggplot(mtcars, aes(mpg, fill = as.factor(cyl))) +
+  geom_histogram(position = "identity", binwidth = 1)
+
+
+# Change geom to freqpoly (position is identity by default)
+ggplot(mtcars, aes(mpg, color = as.factor(cyl))) +
+  geom_freqpoly(binwidth = 1)
+
+```
+```{r}
+# Example of how to use a brewed color palette
+ggplot(mtcars, aes(x = cyl, fill = am)) +
+  geom_bar() +
+  scale_fill_brewer(palette = "Set1")
+
+# Use str() on Vocab to check out the structure
+#str(Vocab)
+
+# Plot education on x and vocabulary on fill
+# Use the default brewed color palette
+#ggplot(Vocab, aes(x = education, fill = vocabulary)) +
+#geom_bar(position = "fill") +
+#scale_fill_brewer()
+
+# Definition of a set of blue colors
+library(RColorBrewer)
+blues <- brewer.pal(9, "Blues") # from RColorBrewer package
+
+# 1 - Make a color range using colorRampPalette() and the set of blues
+blue_range <- colorRampPalette(blues)
+
+# 2 - Use blue_range to adjust the color of the bars, use scale_fill_manual()
+#ggplot(Vocab, aes(x = education, fill = vocabulary)) +
+#  geom_bar(position = "fill") +
+#  scale_fill_manual(values = blue_range(11))
+
+```
+
+```{r}
+# 1 - Basic histogram plot command
+ggplot(mtcars, aes(mpg)) +
+  geom_histogram(binwidth = 1)
+
+# 2 - Plot 1, Expand aesthetics: am onto fill
+ggplot(mtcars, aes(mpg, fill = am)) +
+  geom_histogram(binwidth = 1)
+
+
+# 3 - Plot 2, change position = "dodge"
+ggplot(mtcars, aes(mpg, fill = am)) +
+  geom_histogram(binwidth = 1, position = "dodge")
+
+
+# 4 - Plot 3, change position = "fill"
+ggplot(mtcars, aes(mpg, fill = am)) +
+  geom_histogram(binwidth = 1, position = "fill")
+
+
+# 5 - Plot 4, plus change position = "identity" and alpha = 0.4
+ggplot(mtcars, aes(mpg, fill = am)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.4)
+
+
+# 6 - Plot 5, plus change mapping: cyl onto fill
+ggplot(mtcars, aes(mpg, fill = cyl)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.4)
+
+```
+
+
+## Geometries - Line plots and time series
+```{r}
+# str(fish)
+```
+Lines can be encoded by thickness, type and color. The easiest to distinguish by visual perception is color.
+```{r}
+# ggplot(fish, aes(x = Year, y = Capture, col = Species)) +
+#   geom_line()
+#
+#ggplot(fish, aes(x = Year, y = Capture, fill = Species)) +
+#   geom_area()   # default position = "stack"
+```
+Stacking filled area for line plots can work sometimes depending on how many groups you have, but can be overwhelming. You can also adjust to `position = "fill"` to show proportion if that's what you want to communicate.
+```{r}
+# ggplot(fish, aes(x = Year, y = Capture, fill = Species)) +
+#   geom_area(position = "fill")
+```
+A problem with this kind of plot is that only the very bottom and very top are on a common scale that's easy to read and compare over time. Overlapping plots can be shown with `geom_ribbon`.
+```{r}
+# ggplot(fish, aes(x = Year, y = Capture, fill = Species)) +
+#   geom_ribbon(aes(ymax = Capture, ymin = 0), alpha = 0.3)
+```
+
+```{r}
+# Print out head of economics
+head(economics)
+
+# Plot unemploy as a function of date using a line plot
+ggplot(economics, aes(x = date, y = unemploy)) +
+geom_line()
+
+# Adjust plot to represent the fraction of total population that is unemployed
+ggplot(economics, aes(x = date, y = unemploy/pop)) +
+geom_line()
+```
+"By themselves, time series often contain enough valuable information, but you always want to maximize the number of variables you can show in a plot. This allows you (and your viewers) to begin making comparisons between those variables that would otherwise be difficult or impossible.
+
+Here, you'll add shaded regions to the background to indicate recession periods. How do unemployment rate and recession period interact with each other?
+
+In addition to the economics dataset from before, you'll also use the recess dataset for the periods of recession. The recess data frame contains 2 variables: the begin period of the recession and the end. It's already available in your workspace.
+
+Expand the command from the previous exercise with geom_rect(). You will use this geom layer to draw rectangles across the recession periods. There are a few pitfalls here:
+
+geom_rect() uses the recess dataset, so pass this directly as data = recess inside geom_rect().
+The geom_rect() command shouldn't inherit aesthetics from the base ggplot() command it belongs to. It would result in an error, since you're using a different dataset and it doesn't contain unemploy or pop. That's why you should specify inherit.aes = FALSE in geom_rect().
+geom_rect() needs four aesthetics: xmin, xmax, ymin and ymax. These should be set to begin, end and -Inf, +Inf, respectively. Define them within aes().
+The rectangles you add will be black and opaque by default. Set fill to "red" and alpha to 0.2 to improve this. Define them outside aes()."
+```{r}
+# Basic line plot
+#ggplot(economics, aes(x = date, y = unemploy/pop)) +
+#  geom_line()
+
+# Expand the following command with geom_rect() to draw the recess periods
+#ggplot(economics, aes(x = date, y = unemploy/pop)) +
+#  geom_rect(data = recess,
+#         aes(xmin = begin, xmax = end, ymin = -Inf, ymax = Inf),
+#         inherit.aes = FALSE, fill = "red", alpha = 0.2) +
+#  geom_line()
+
+```
+"In the data chapter we discussed how the form of your data affects how you can plot it. Here, you'll explore that topic in the context of multiple time series.
+
+The dataset you'll use contains the global capture rates of seven salmon species from 1950 - 2010.
+
+In your workspace, the following dataset is available:
+
+fish.species: Each variable (column) is a Salmon Species and each observation (row) is one Year.
+To get a multiple time series plot, however, both Year and Species should be in their own column. You need tidy data: one variable per column. Once you have that you can get the plot shown in the viewer by mapping Year to the x aesthetic and Species to the color aesthetic.
+
+You'll use the gather() function of the tidyr package, which is already loaded for you.
+
+Use gather() to move from fish.species to a tidy data frame, fish.tidy. This data frame should have three columns: Year (int), Species (factor) and Capture (int).
+gather() takes four arguments: the original data frame (fish.species), the name of the key column (Species), the name of the value column (Capture) and the name of the grouping variable, with a minus in front (-Year). They can all be specified as object names (i.e. no "")."
+
+```{r}
+# Check the structure as a starting point
+#str(fish.species)
+
+# Use gather to go from fish.species to fish.tidy
+#fish.tidy <- gather(fish.species, Species, Capture, -Year)
+
+# Recreate the plot shown on the right
+#ggplot(fish.tidy, aes(x = Year, y = Capture, color = Species)) +
+#geom_line()
+```
+
+## Quick plots with qplot
+
+"For simple exploratory plots, there are a variety of functions available. ggplot2 offers a powerful and diverse array of functions, but qplot() allows for quick and dirty plots. Plus, you should also be familiar with basic plotting notation."
+```{r}
+# The old way (shown)
+plot(mpg ~ wt, data = mtcars) # formula notation
+with(mtcars, plot(wt, mpg)) # x, y notation
+
+# Using ggplot:
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point()
+
+# Using qplot:
+qplot(wt, mpg, data = mtcars)
+
+```
+"You already saw how some aesthetics are only applicable to categorical variables, such as shapes and linetypes. But just because others, such as size and color (and hence fill), can be applied to both categorical and continuous variables, doesn't mean that they're suitable for both."
+
+```{r}
+# basic qplot scatter plot:
+qplot(wt, mpg, data = mtcars)
+
+# Categorical variable mapped onto size:
+# cyl
+qplot(wt, mpg, data = mtcars, size = factor(cyl))
+
+# gear
+qplot(wt, mpg, data = mtcars, size = factor(gear))
+
+# Continuous variable mapped onto col:
+# hp
+qplot(wt, mpg, data = mtcars, color = hp)
+
+# qsec
+qplot(wt, mpg, data = mtcars, color = qsec)
+
+```
+"qplot automatically takes care of assigning a geom to our plot given the type of data, but you can specify the geom yourselves."
+```{r}
+# qplot() with x only
+qplot(factor(cyl), data = mtcars)
+
+# qplot() with x and y
+qplot(factor(cyl), factor(vs), data = mtcars)
+
+# qplot() with geom set to jitter manually
+qplot(factor(cyl), factor(vs), data = mtcars, geom = "jitter")
+```
+"Some naming conventions:
+
+Scatter plots:
+Continuous x, continuous y.
+Dot plots:
+Categorical x, continuous y.
+You use geom_point() for both plot types. Jittering position is set in the geom_point() layer.
+
+However, to make a "true" dot plot, you can use geom_dotplot(). The difference is that unlike geom_point(), geom_dotplot() uses a binning statistic. Binning means to cut up a continuous variable (the y in this case) into discrete "bins". You already saw binning with geom_histogram() (see this exercise for a refresher).
+
+One thing to notice is that geom_dotplot() uses a different plotting symbol to geom_point(). For these symbols, the color aesthetic changes the color of its border, and the fill aesthetic changes the color of its interior.
+
+Let's take a look at how the two geoms compare.
+
+A "basic" dot plot is shown in the viewer (see the code in the editor). Here, cyl (categorical) is mapped onto the x and wt (continuous) is mapped onto the y aesthetic. For this exercise we've already converted am to a factor variable for you.
+
+1 - Re-draw that plot in the viewer as a "true" dot plot.
+Add a dotplot geom by calling geom_dotplot().
+Set the arguments stackdir = "center" and binaxis = "y". These are our standard settings, but take a look at the help pages and try different settings to get familiar with these arguments.
+2 - Convert the previous ggplot() command to a qplot() command.
+"
+```{r}
+# cyl and am are factors, wt is numeric
+class(mtcars$cyl)
+class(mtcars$am)
+class(mtcars$wt)
+
+# "Basic" dot plot, with geom_point():
+ggplot(mtcars, aes(factor(cyl), wt, col = factor(am))) +
+  geom_point(position = position_jitter(0.2, 0))
+
+# 1 - "True" dot plot, with geom_dotplot():
+ggplot(mtcars, aes(factor(cyl), wt, fill = factor(am))) +
+  geom_dotplot(binaxis = "y", stackdir = "center")
+
+# 2 - qplot with geom "dotplot", binaxis = "y" and stackdir = "center"
+qplot(
+  factor(cyl), wt,
+  data = mtcars,
+  fill = factor(am),
+  geom = "dotplot",
+  binaxis = "y",
+  stackdir = "center"
+)
+```
+
+## Geometries summary exercises
+
+"The ChickWeight dataset is a data frame which represents the progression of weight of several chicks. The little chicklings are each given a specific diet. There are four types of diet and the farmer wants to know which one fattens the chicks the fastest.
+
+It's time to do some exploratory statistics on the data frame using the techniques you learned in this course! Let's do some ggplot-ing!
+
+1 - Execute head(ChickWeight) to check the first few rows of this dataset. Looks like the data is pretty tidy!
+2 - Plot a line for each chick.
+Use ggplot() and map Time to x and weight to y within the aes() function.
+Add geom_line() at the end to draw the lines.
+To draw one line per chick, add group = Chick to the aes() of geom_line().
+Oops! That looks pretty chaotic and you can't really conclude anything from it. Let's try again.
+3 - Take plot 2 and add color = Diet within the aes() of ggplot(). There's some more information here, although it would be better to have some summary statistics as well. What do you think would be helpful?
+4 - Take plot 3 and add geom_smooth() with attributes lwd set to 2 and se set to FALSE. Inside geom_line(), set alpha of to 0.3."
+```{r}
+# ChickWeight is available in your workspace
+# 1 - Check out the head of ChickWeight
+head(ChickWeight)
+
+# 2 - Basic line plot
+ggplot(ChickWeight, aes(x = Time, y = weight)) +
+  geom_line(aes(group = Chick))
+
+# 3 - Take plot 2, map Diet onto col.
+ggplot(ChickWeight, aes(x = Time, y = weight, color = Diet)) +
+  geom_line(aes(group = Chick))
+
+
+# 4 - Take plot 3, add geom_smooth()
+ggplot(ChickWeight, aes(x = Time, y = weight, color = Diet)) +
+  geom_line(aes(group = Chick), alpha = 0.3) +
+  geom_smooth(lwd = 2, se = FALSE)
+
+
+```
+"You've watched the movie Titanic by James Cameron (1997) again and after a good portion of sobbing you decide to investigate whether you'd have a chance of surviving this disaster.
+
+To start your investigation, you decide to do some exploratory visualization with ggplot(). You have information on who survived the sinking given their age, sex and passenger class.
+
+1 - Have a look at the str() of the titanic dataset, which has been loaded into your workspace. Looks like the data is pretty tidy!
+2 - Plot the distribution of sexes within the classes of the ship.
+Use ggplot() with the data layer set to titanic.
+Map Pclass onto the x axis, Sex onto fill and draw a dodged bar plot using geom_bar(), i.e. set the geom position to "dodge".
+
+3 - These bar plots won't help you estimate your chances of survival. Copy the previous bar plot, but this time add a facet_grid() layer: . ~ Survived.
+4 - We've defined a position object for you.
+5 - Include Age, the final variable.
+Take plot 3 and add a mapping of Age onto the y aesthetic.
+Change geom_bar() to geom_point() and set its attributes size = 3, alpha = 0.5 and position = posn.jd.
+Make sure that Sex is mapped onto color instead of fill to correctly color the scatter plots. (This was discussed in detail here and here)."
+```{r}
+# titanic is avaliable in your workspace
+# 1 - Check the structure of titanic
+#str(titanic)
+
+# 2 - Use ggplot() for the first instruction
+#ggplot(titanic, aes(x = Pclass, fill = Sex)) +
+ # geom_bar(position = "dodge")
+
+# 3 - Plot 2, add facet_grid() layer
+#ggplot(titanic, aes(x = Pclass, fill = Sex)) +
+#  geom_bar(position = "dodge") +
+#  facet_grid(. ~ Survived)
+
+# 4 - Define an object for position jitterdodge, to use below
+#posn.jd <- position_jitterdodge(0.5, 0, 0.6)
+
+# 5 - Plot 3, but use the position object from instruction 4
+#ggplot(titanic, aes(x = Pclass, y = Age, color = Sex)) +
+#  geom_point(size = 3, alpha = 0.5, position = posn.jd) +
+#  facet_grid(. ~ Survived)
+
+```
+## Statistics layer
+
+"Welcome to the exercises for the second ggplot2 course!
+
+To practice on the remaining four layers (statistics, coordinates, facets and themes), we'll continue working on several datasets that we already encountered in the first course.
+
+The mtcars dataset contains information for 32 cars from Motor Trends magazine from 1973. This dataset is small, intuitive, and contains a variety of continuous and categorical (both nominal and ordinal) variables.
+
+In the previous course we learned how to effectively use some basic geometries, such as point, bar and line. In the first chapter of this course we'll explore statistics associated with specific geoms, for example, smoothing and lines.
+
+Familiarize yourself again with the mtcars dataset using str().
+Extend the first ggplot call: add a LOESS smooth to the scatter plot (which is the default) with geom_smooth(). We want to have the actual values and the smooth on the same plot.
+Change the previous plot to use an ordinary linear model, by default it will be y ~ x, so you don't have to specify a formula. You should set the method argument to "lm".
+Modify the previous plot to remove the 95% CI ribbon. You should set the se argument to FALSE.
+Modify the previous plot to show only the model, and not the underlying dots."
+```{r}
+# ggplot2 is already loaded
+
+# Explore the mtcars data frame with str()
+str(mtcars)
+
+# A scatter plot with LOESS smooth
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point() +
+  geom_smooth()
+
+# A scatter plot with an ordinary Least Squares linear model
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+# The previous plot, without CI ribbon
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+
+# The previous plot, without points
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_smooth(method = "lm", se = FALSE)
+```
+"We'll continue with the previous exercise by considering the situation of looking at sub-groups in our dataset. For this we'll encounter the invisible group aesthetic.
+
+A plot that maps cyl onto the col aesthetic is already coded.
+
+Change col so that factor(cyl) is mapped onto it instead of just cyl.
+
+Note: In this ggplot command our smooth is calculated for each subgroup because there is an invisible aesthetic, group which inherits from col.
+
+Complete the second ggplot command.
+
+Add another stat_smooth() layer with exactly the same attributes (method set to "lm", se to FALSE).
+
+Add a group aesthetic inside the aes() of this new stat_smooth(), set it to a dummy variable, 1."
+```{r}
+# ggplot2 is already loaded
+
+# 1 - Define cyl as a factor variable
+ggplot(mtcars, aes(x = wt, y = mpg, col = factor(cyl))) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE)
+
+# 2 - Plot 1, plus another stat_smooth() containing a nested aes()
+ggplot(mtcars, aes(x = wt, y = mpg, col = factor(cyl))) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  stat_smooth(aes(group = 1), method = "lm", se = FALSE)
+```
+"In the previous exercise we used se = FALSE in stat_smooth() to remove the 95% Confidence Interval. Here we'll consider another argument, span, used in LOESS smoothing, and we'll take a look at a nice scenario of properly mapping different models.
+
+ggplot2 is already loaded and several of the linear models we looked at in the two previous exercises are already given.
+
+Plot 1: Recall that LOESS smoothing is a non-parametric form of regression that uses a weighted, sliding-window, average to calculate a line of best fit. We can control the size of this window with the span argument.
+
+Add span, set it to 0.7.
+Plot 2: In this plot, we set a linear model for the entire dataset as well as each subgroup, defined by cyl. In the second stat_smooth(),
+
+Set method to "loess" (this is the default with a small (n < 1000) data set, but we will specify it explicitly).
+Add span, set it to 0.7.
+Plot 3: Plot 2 presents a problem because there is a black line on our plot that is not included in the legend. To get this, we need to map something to col as an aesthetic, not just set col as an attribute.
+
+Add col to the aes() function in the second stat_smooth(), set it to "All". This will name the line properly.
+Remove the col attribute in the second stat_smooth(). Otherwise, it will overwrite the col aesthetic.
+Plot 4: Now we should see our "All" model in the legend, but it's not black anymore.
+
+Add a scale layer: scale_color_manual() with the first argument set to "Cylinders" and values set to the predefined myColors variable."
+```{r}
+# Plot 1: change the LOESS span
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point() +
+  # Add span below
+  geom_smooth(se = FALSE, span = 0.7)
+
+# Plot 2: Set the second stat_smooth() to use LOESS with a span of 0.7
+ggplot(mtcars, aes(x = wt, y = mpg, col = factor(cyl))) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  # Change method and add span below
+  stat_smooth(method = "loess", aes(group = 1), # making default setting loess explicit
+              se = FALSE, span = 0.7, col = "black")
+
+# Plot 3: Set col to "All", inside the aes layer of stat_smooth()
+ggplot(mtcars, aes(x = wt, y = mpg, col = factor(cyl))) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  stat_smooth(method = "loess",
+              # Add col inside aes()
+              aes(group = 1, col = "All"),
+              # Remove the col argument below
+              se = FALSE, span = 0.7)
+
+# Plot 4: Add scale_color_manual to change the colors
+library(RColorBrewer)
+myColors <- c(brewer.pal(3, "Dark2"), "black")
+ggplot(mtcars, aes(x = wt, y = mpg, col = factor(cyl))) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE, span = 0.7) +
+  stat_smooth(method = "loess", 
+              aes(group = 1, col="All"), 
+              se = FALSE, span = 0.7) +
+  # Add correct arguments to scale_color_manual
+  scale_color_manual("Cylinders", values = myColors)
+```
+"In this exercise we'll take a look at a more subtle example of defining and using linear models. ggplot2 and the Vocab data frame are already loaded for you.
+
+Plot 1: This code produces a jittered plot of vocabulary against education, variables from the Vocab data frame.
+
+Add a stat_smooth() layer with method set to "lm". Hide the CI ribbons by using se = FALSE.
+Plot 2: Color by year.
+
+Specify the col = year aesthetic to the nested ggplot(aes()) function.
+To see why this works, try using only col = year, and adding points.
+Plot 3: Linear model for each year.
+
+We need to specify year as a factor variable if we want to use it as a grouping variable for our linear models. Add the col = factor(year) aesthetic to the nested ggplot(aes()) function.
+Plot 4: Years are ordered, so use a sequential color palette.
+
+Add scale_color_brewer().
+Don't add any arguments here. This results in a warning message, since the default palette, "Blues", only has 9 colors. Since we have 16 years, this is not a complete solution!
+Plot 5: To get the proper colors, we can use col = year, because the variable year is type integer and we want a continuous scale. However, we'll need to specify the invisible group aesthetic so that our linear models are still calculated appropriately. The scale layer, scale_color_gradientn(), has been provided for you - this allows us to map a continuous variable onto a colour scale.
+
+Add group = factor(year) inside aes().
+Inside stat_smooth(), set alpha = 0.6 and size = 2."
+
+```{r}
+library(car)
+
+# Plot 1: Jittered scatter plot, add a linear model (lm) smooth
+ggplot(Vocab, aes(x = education, y = vocabulary)) +
+  geom_jitter(alpha = 0.2) +
+  stat_smooth(method = "lm", se = FALSE) # smooth
+
+# Plot 2: points, colored by year
+ggplot(Vocab, aes(x = education, y = vocabulary, col = year)) +
+  geom_jitter(alpha = 0.2) 
+
+# Plot 3: lm, colored by year
+ggplot(Vocab, aes(x = education, y = vocabulary, col = factor(year))) +
+  stat_smooth(method = "lm", se = FALSE) # smooth
+  
+# Plot 4: Set a color brewer palette
+ggplot(Vocab, aes(x = education, y = vocabulary, col = factor(year))) +
+  stat_smooth(method = "lm", se = FALSE) +  # smooth
+  scale_color_brewer()  # colors - don't add args, results in warning because only 9 colors available
+
+# Plot 5: Add the group aes, specify alpha and size
+ggplot(Vocab, aes(x = education, y = vocabulary, col = year, group = factor(year))) + # year is int so will give continuous color scale
+  stat_smooth(method = "lm", se = FALSE, alpha = 0.6, size = 2) +
+  scale_color_gradientn(colors = brewer.pal(9, "YlOrRd"))
+```
+"The previous example used the Vocab dataset and applied linear models describing vocabulary by education for different years. Here we'll continue with that example by using stat_quantile() to apply a quantile regression (method rq).
+
+By default, the 1st, 2nd (i.e. median), and 3rd quartiles are modeled as a response to the predictor variable, in this case education. Specific quantiles can be specified with the quantiles argument.
+
+If you want to specify many quantile and color according to year, then things get too busy. We'll explore ways of dealing with this in the next chapter.
+
+The code from the previous exercise, with the linear model and a suitable color palette, is already shown.
+
+Update the plotting code.
+Change the stat function from stat_smooth() to stat_quantile().
+Get rid of all the arguments except alpha and size.
+The resulting plot will be a mess, because there are three quartiles drawn by default.
+Copy the code for the previous instruction.
+Set the quantiles argument to 0.5 so that only the median is shown."
+
+```{r}
+# Use stat_quantile instead of stat_smooth
+ggplot(Vocab, aes(x = education, y = vocabulary, col = year, group = factor(year))) +
+  stat_quantile(alpha = 0.6, size = 2) +
+  scale_color_gradientn(colors = brewer.pal(9,"YlOrRd"))
+
+# Set quantile to 0.5
+ggplot(Vocab, aes(x = education, y = vocabulary, col = year, group = factor(year))) +
+  stat_quantile(alpha = 0.6, size = 2, quantiles = 0.5) +
+  scale_color_gradientn(colors = brewer.pal(9,"YlOrRd"))
+```
+"Another useful stat function is stat_sum(). This function calculates the total number of overlapping observations and is another good alternative to overplotting.
+
+ggplot2 is already loaded. A plot showing jittered points is already provided and stored as p.
+
+Add stat_sum() to this plotting object p. This maps the overall count of each dot onto size. You don't have to set any arguments; the aesthetics will be inherited from the base plot!
+Add the size scale with the generic scale_size() function. Use range to set the minimum and maximum dot sizes as c(1,10)."
+```{r}
+# Plot 1: Jittering only
+#p <- ggplot(Vocab, aes(x = education, y = vocabulary)) +
+#  geom_jitter(alpha = 0.2)
+
+# Plot 2: Add stat_sum
+#p +
+#  stat_sum() # sum statistic
+
+# Plot 3: Set size range
+#p +
+#  stat_sum() + # sum statistic
+#  scale_size(range = c(1, 10)) # set size scale
+```
+Typically we would draw our models on top of the dots, but in this case we didn't so that we could keep recycling the `p` object.
+
+Statistics can also be called outside of geoms. Consider this basic plot:
+```{r}
+ggplot(iris, aes(x = Species, y = Sepal.Length)) +
+  geom_point(position = position_jitter(0.2))
+```
+We can calculate summary statistics like mean, sd, confidence interval with base R functions and add columns to our data frame, but it is much more convenient to calculate them inside our `ggplot` calls using the __Hmisc__ package.
+
+The __Hmisc__ function for calculating the mean plus or minus one standard deviation is `smean.sdl`:
+
+```{r}
+set.seed(123)
+xx <- rnorm(100)
+
+mean(xx)
+
+mean(xx) + (sd(xx) * c(-1,1))
+
+library(Hmisc)
+smean.sdl(xx, mult = 1)  # default = 2 SD, set SD multiple to 1 with mult = 1
+```
+There is a version of the __Hmisc__ function that is compatible with __ggplot__, `mean_sdl`, which converts the vector to a data frame and renames the variables to match the aesthetic naming convention of __ggplot__.
+```{r}
+mean_sdl(xx, mult = 1)
+```
+
+We can call `mean_sdl` as the `fun.data` argument of `stat_summary`, which automatically feeds the result and an appropriate geom to our plot. By default, `stat_summary` uses the `geom_pointrange` aesthetic, which requires y, ymin and ymax (the return values of `mean_sdl`).
+
+We can create a more common error bar type plot with whiskers by calling two independent `stat_summary` functions, one for the mean and one for the error bars.
+```{r}
+ggplot(iris, aes(x = Species, y = Sepal.Length)) +
+  stat_summary(fun.y = mean, geom = "point") +
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.1)
+```
+The __Hmisc__ function for determining 95% confidence interval is `smean.cl.normal` and can be called within `ggplot` as `mean_cl_normal`. CIs are calculated using the t-distribution.
+```{r}
+ERR <- qt(0.975, length(xx) - 1) * (sd(xx)/sqrt(length(xx)))
+
+mean(xx) + (ERR * c(-1,1))
+
+smean.cl.normal(xx)
+
+mean_cl_normal(xx)
+```
+We can use any function we want in `stat_summary` as long as the output matches the format expected by the geom being used.
+
+Useful stat functions are:
+`stat_summary`: summarize y values at distinct x values
+`stat_function`: compute y values as a function of x values
+`stat_qq`: perform calculations for a quantile-quantile plot
+
+We earlier analyzed the mammalian body weight data set and stated that log10 transformed body weight and brain weight seemed well fitted by our linear model - that is, seemed to follow a normal distribution fairly well. We can use stat layers to demonstrate this more clearly.
+
+```{r}
+library(MASS)
+mam.new <- data.frame(body = log10(mammals$body))
+ggplot(mam.new, aes(x = body)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_rug() + # adds tick marks to bottom of plot
+  stat_function(fun = dnorm, color = "red", # plots a normal distribution density function
+                args = list(mean = mean(mam.new$body),
+                           sd = sd(mam.new$body)))
+```
+We can also evaluate the normality of the data using a QQ plot, which draws a "qq-line" intersecting the scatter plot at the first and third quartiles. There is unfortunately no built-in function for doing qq calculations, so we need to do them manually.
+```{r}
+mam.new$slope <- diff(quantile(mam.new$body, c(0.25, 0.75))) / diff(qnorm(c(0.25, 0.75)))
+mam.new$int <- quantile(mam.new$body, 0.25) - mam.new$slope * qnorm(0.25)
+
+ggplot(mam.new, aes(sample = body)) +
+  stat_qq() +
+  geom_abline(aes(slope = slope, intercept = int), color = "red")
+```
+
+
+"Here we'll look at stat_summary() in action. We'll build up various plots one-by-one.
+
+In this exercise we'll consider the preparations. That means we'll make sure the data is in the right format and that all the positions that we might use in our plots are defined. Lastly, we'll set the base layer for our plot."
+
+"Explore the structure of the mtcars dataset by executing str(mtcars).
+In mtcars, cyl and am are classified as continuous, but they are actually categorical. Previously we just used factor(), but here we'll modify the actual dataset. Change cyl and am to be categorical in the mtcars data frame using as.factor.
+Next we'll set three position objects with convenient names. This allows us to use the exact positions on multiple layers. Create:
+posn.d, using position_dodge() with a width of 0.1,
+posn.jd, using position_jitterdodge() with a jitter.width of 0.1 and a dodge.width of 0.2
+posn.j, using position_jitter() with a width of 0.2.
+Finally, we'll make our base layers and store it in the object wt.cyl.am. Make the base call for ggplot mapping cyl to the x, wt to y, am to both col and fill. Also set group = am inside aes(). The reason for these redundancies will become clear later on."
+
+```{r}
+# Display structure of mtcars
+str(mtcars)
+
+# Convert cyl and am to factors
+mtcars$cyl <- as.factor(mtcars$cyl)
+mtcars$am <- as.factor(mtcars$am)
+
+# Define positions
+posn.d <- position_dodge(width = 0.1)
+posn.jd <- position_jitterdodge(jitter.width = 0.1, dodge.width = 0.2)
+posn.j <- position_jitter(width = 0.2)
+
+# Base layers
+wt.cyl.am <- ggplot(mtcars, aes(x = cyl, y = wt, col = am, fill = am, group = am))
+```
+
+Now that the preparation work is done, let's have a look at at stat_summary().
+
+Plot 2: Add a stat_summary() layer to wt.cyl.am and calculate the mean and standard deviation as we did in the video: set fun.data to mean_sdl and specify fun.args to be list(mult = 1). Set the position argument to posn.d.
+Plot 3: Repeat the previous plot, but use the 95% confidence interval instead of the standard deviation. You can use mean_cl_normal instead of mean_sdl this time. There's no need to specify fun.args in this case. Again, set position to posn.d.
+The above plots were simple because they implicitly used a default geom, which is geom_pointrange(). For Plot 4, fill in the blanks to calculate the mean and standard deviation separately with two stat_summary() functions:
+For the mean, use geom = "point" and set fun.y = mean. This time you should use fun.y because the point geom uses the y aesthetic behind the scenes.
+Add error bars with another stat_summary() function. Set geom = "errorbar" to get the real "T" tips. Set fun.data = mean_sdl.
+```{r}
+# wt.cyl.am, posn.d, posn.jd and posn.j are available
+
+# Plot 1: Jittered, dodged scatter plot with transparent points
+wt.cyl.am +
+  geom_point(position = posn.jd, alpha = 0.6)
+
+# Plot 2: Mean and SD - the easy way
+wt.cyl.am +
+  geom_point(position = posn.jd, alpha = 0.6) +
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), position = posn.d)
+
+
+# Plot 3: Mean and 95% CI - the easy way
+wt.cyl.am +
+  geom_point(position = posn.jd, alpha = 0.6) +
+  stat_summary(fun.data = mean_cl_normal, position = posn.d)
+
+
+# Plot 4: Mean and SD - with T-tipped error bars - fill in ___
+wt.cyl.am +
+  stat_summary(geom = "point", fun.y = mean,
+               position = posn.d) +
+  stat_summary(geom = 'errorbar', fun.data = mean_sdl,
+               position = posn.d, fun.args = list(mult = 1), width = 0.1)
+```
+In order to use the results of a function directly in `ggplot`, the variable names must match the aesthetics needed for the geom. Here we create two new functions, one to measure full range and one to measure IQR. The function needs to generate `y`, `ymin`, `ymax`.
+```{r}
+# Play vector xx is available
+xx <- seq(1:100)
+
+# Function to save range for use in ggplot
+gg_range <- function(x) {
+  # Change x below to return the instructed values
+  data.frame(ymin = min(x), # Min
+             ymax = max(x)) # Max
+}
+
+gg_range(xx)
+# Required output
+#   ymin ymax
+# 1    1  100
+
+# Function to Custom function
+med_IQR <- function(x) {
+  # Change x below to return the instructed values
+  data.frame(y = median(x), # Median
+             ymin = quantile(x)[2], # 1st quartile
+             ymax = quantile(x)[4])  # 3rd quartile
+}
+
+med_IQR(xx)
+# Required output
+#        y  ymin  ymax
+# 25% 50.5 25.75 75.25
+```
+```{r}
+# The base ggplot command; you don't have to change this
+wt.cyl.am <- ggplot(mtcars, aes(x = cyl,y = wt, col = am, fill = am, group = am))
+
+# Add three stat_summary calls to wt.cyl.am
+wt.cyl.am +
+  stat_summary(geom = "linerange", fun.data = med_IQR,
+               position = posn.d, size = 3) +
+  stat_summary(geom = "linerange", fun.data = gg_range,
+               position = posn.d, size = 3,
+               alpha = 0.4) +
+  stat_summary(geom = "point", fun.y = median,
+               position = posn.d, size = 3,
+               col = "black", shape = "X")
+```
+
+## Coordinates layer
+
+Coordinate layers control the dimensions of your plot. `coord_cartesian` is the most common.
+
+You can zoom in to a subset of your plot with several methods, but there are benefits and limitations to each. If you change limits to be a subset of your data with `scale_x_continuous` for example, you limit the x-axis but also end up filtering the data to only include values within that range. This can disrupt your models - for example, `geom_smooth` may not be generated. To generate the full plot and then zoom in without any loss of data, instead use `coord_cartesian` and set the `xlim` parameter. 
+```{r}
+# Basic ggplot() command, coded for you
+p <- ggplot(mtcars, aes(x = wt, y = hp, col = am)) + geom_point() + geom_smooth()
+
+# Add scale_x_continuous()
+p + scale_x_continuous(limits = c(3,6), expand = c(0,0))
+
+# Add coord_cartesian(): the proper way to zoom in
+p + coord_cartesian(xlim = c(3,6))
+
+```
+We can set the aspect ratio of a plot with `coord_fixed` or `coord_equal`, both of which use a default of `ratio = 1`. The 1:1 aspect ratio is most appropriate when two continuous variables are on the same scale.
+```{r}
+# Complete basic scatter plot function
+base.plot <- ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+               geom_jitter() +
+               geom_smooth(method = "lm", se = FALSE)
+
+# Plot base.plot: default aspect ratio
+base.plot
+
+# Fix aspect ratio (1:1) of base.plot
+base.plot + coord_equal()
+```
+`coord_polar` converts planar coordinates to polar coordinates, which can be useful for generating pie charts. Pie charts are not better than bar charts, but some people will request them (incorrectly).
+
+"Create a basic stacked bar plot. Since we have univariate data and stat_bin() requires an x aesthetic, we'll have to use a dummy variable. Set x to 1 and map cyl onto fill. Assign the bar plot to wide.bar.
+Add a coord_polar() layer to wide.bar. Set the argument theta to "y". This specifies the axis which would be transformed to polar coordinates.
+Repeat the code for the stacked bar plot, but this time:
+Set the width argument inside the geom_bar() function to 0.1 and
+Use scale_x_continuous() to set the limits argument to c(0.5,1.5)). These two steps will add empty space aroung the bar on the x axis.
+Assign this plot to thin.bar.
+Add a coord_polar() layer to thin.bar, as you did before. There's a ring structure instead of a pie!"
+```{r}
+# Create a stacked bar plot: wide.bar
+wide.bar <- ggplot(mtcars, aes(x = 1, fill = cyl)) + # x dummy variable
+              geom_bar()
+
+# Convert wide.bar to pie chart
+wide.bar +
+  coord_polar(theta = "y") # y axis to polar
+
+# Create stacked bar plot: thin.bar
+thin.bar <- ggplot(mtcars, aes(x = 1, fill = cyl)) +
+              geom_bar(width = 0.1) +
+              scale_x_continuous(limits = c(0.5,1.5))
+
+# Convert thin.bar to "ring" type pie chart
+thin.bar + 
+  coord_polar(theta = "y")
+```
+## Faceting layer
+
+Facets take a complex data set and produce a variety of smaller subplots. `facet_grid` takes two arguments split by a ~: the left specifies how the rows should be arranged, and the right specifies columns: `facet_grid(rows ~ columns)`. Facets add an extra variable to our plots and also aid in visual perception by putting the plots on the same axes. The choice of whether to arrange by rows or columns depends on how your data is arranged, as the goal is to aid visual perception by having relevant axes aligned.
+```{r}
+p <- ggplot(iris.wide, aes(x = Length, y = Width, col = Part)) +
+  geom_point(position = position_jitter(), alpha = 0.7) +
+  scale_color_brewer(palette = "Set1") +
+  coord_fixed()
+p
+p + facet_grid(. ~ Species)
+```
+```{r}
+# Basic scatter plot
+p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point()
+
+# 1 - Separate rows according to transmission type, am
+p +
+  facet_grid(am ~ .)
+
+# 2 - Separate columns according to cylinders, cyl
+p +
+  facet_grid(. ~ cyl)
+
+# 3 - Separate by both columns and rows 
+p +
+  facet_grid(am ~ cyl)
+
+```
+"Facets are another way of presenting categorical variables. Recall that we saw all the ways of combining variables, both categorical and continuous, in the aesthetics chapter. Sometimes it's possible to overdo it. Here we'll present a plot with 6 variables and see if we can add even more.
+
+Let's begin by using a trick to map two variables onto two color scales - hue and lightness. We combine cyl and am into a single variable cyl_am. To accommodate this we also make a new color palette with alternating red and blue of increasing darkness. This is saved as myCol. If you are not familiar with these steps, execute the code piece-by-piece."
+```{r}
+library(RColorBrewer)
+
+# Code to create the cyl_am col and myCol vector
+mtcars$cyl_am <- paste(mtcars$cyl, mtcars$am, sep = "_")
+myCol <- rbind(brewer.pal(9, "Blues")[c(3,6,8)],
+               brewer.pal(9, "Reds")[c(3,6,8)])
+
+# Map cyl_am onto col
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl_am)) +
+  geom_point() +
+  # Add a manual colour scale
+  scale_color_manual(values = myCol)
+
+  
+# Grid facet on gear vs. vs
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl_am)) +
+  geom_point() +
+  # Add a manual colour scale
+  scale_color_manual(values = myCol) +
+  facet_grid(gear ~ vs)
+
+# Also map disp to size
+ggplot(mtcars, aes(x = wt, y = mpg, col = cyl_am, size = disp)) +
+  geom_point() +
+  # Add a manual colour scale
+  scale_color_manual(values = myCol) +
+  facet_grid(gear ~ vs)
+```
+"When you have a categorical variable with many levels which are not all present in each sub-group of another variable, it may be desirable to drop the unused levels. As an example let's return to the mammalian sleep dataset, mamsleep. It is available in your workspace.
+
+The variables of interest here are name, which contains the full popular name of each animal, and vore, the eating behavior. Each animal can only be classified under one eating habit, so if we facet according to vore, we don't need to repeat the full list in each sub-plot."
+```{r}
+# Basic scatter plot
+#p <- ggplot(mamsleep, aes(x = time, y = name, col = sleep)) +
+#  geom_point()
+  
+# Execute to display plot
+#p
+
+# Facet rows accoding to vore
+#p +
+#  facet_grid(vore ~ .)
+
+# Specify scale and space arguments to free up rows for which there is no data
+#p +
+#  facet_grid(vore ~ ., scale = "free_y", space = "free_y")
+
+```
+## Themes layer
+
+The themes layer controls all the non-data ink on the plot. This lets you control both the visual attributes of components and also their positions. We will start with visual attributes.
+- text: `element_text`
+- line: `element_line`
+- rectangle: `element_rect`
+
+There is a bunch of text on a plot, and it can either be accessed all together or addressed at an item-specific level with `theme`(`text`, `title`, `plot.title`, `legend_text`, `legend_title`, `axis.title`, `axis.title.x`, `axis.title.y`, `axis.text`, `axis.text.x`, `axis.text.y`, `strip.text`, `strip.text.x`, `strip.text.y`).
+
+An example call structure is `theme(text = element_text(...))` to manipulate things like size, color, alignment, and angle of the text.
+
+Lines include tick marks on axes, axis lines themselves, and major/minor grid lines.
+`theme`(`line`, `axis.ticks`, `axis.ticks.x`, `axis.ticks.y`, `axis.line`, `axis.line.x`, `axis.line.y`, `panel.grid`, `panel.grid.major`, `panel.grid.major.x`, `panel.grid.major.y`, `panel.grid.minor`, `panel.grid.minor.x`, `panel.grid.minor.y`).
+
+An example call structure is `theme(line = element_line(...))`.
+
+The remaining ink on our plot consists of various rectangles, including entire plot area, panel (plotting space itself), legend and keys. `theme`(`rect`, `legend.background`, `legend.key`, `panel.background`, `panel.border`, `plot.background`, `strip.background`).
+
+An example call structure is `theme(rect = element_rect(...))`.
+
+We can access and change elements individually, but we don't have to because of an inheritance hierarchy as described in the element order lists above. The top hierarchy level for each element (text, line, rect) applies to all elements within the level. There are additional levels of inheritance - if something can affect both x/y axes, the general call will affect both axes (i.e. `axis.text`) but they can be accessed individually too (`axis.text.(x,y)`). Furthermore, major/minor gridlines can be accessed separately or just for specific axes as `panel.grid.(major.minor).(x,y)`. Plot and legend title are both controlled together too through `title` or separately as `(plot/legend).title`.  
+
+Importantly, we can remove any item by calling `element_blank`. For example, `theme( text = element_blank())` removes all text from the plot and legend.
+
+```{r}
+z <- ggplot(mtcars, aes(x = wt, y = mpg, col = factor(cyl))) +
+  facet_grid(. ~ cyl) +
+  geom_jitter(alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", se = FALSE)
+
+z
+```
+
+```{r}
+myCol <- brewer.pal(9, "Blues")[c(4,6,8)]
+
+z <- z +
+  scale_color_manual("Cylinders", values = myCol) +
+  labs(y = "Miles/(US) gallon") +
+  scale_x_continuous("Weight (lb/1000)", limits = c(1.5, 6), breaks = seq(2, 6, 2))
+
+z
+```
+"Plot 1: In the theme() function added to z, set the plot.background argument to element_rect(fill = myPink)."
+```{r}
+myPink = "#FEE0D2"
+
+z + theme(plot.background = element_rect(fill = myPink))
+```
+"Plot 2: Expand your code for Plot 1 by adding a border to the plot.background. Do this by adding 2 arguments to the element_rect() function in theme(): color and size. Set them to "black" and 3, respectively."
+```{r}
+z +
+  theme(plot.background = element_rect(fill = myPink, color = "black", size = 3))
+```
+"Plot 3: we don't want the plot panels and legend to appear as they are in Plot 2. A short cut is to remove all rectangles, as defined in the theme object no_panels, and then draw the one we way in the way we want. Copy your theme() layer from Plot 2 and add it to no_panels."
+```{r}
+# Theme to remove all rectangles
+no_panels <- theme(rect = element_blank())
+
+z <- z +
+  no_panels +
+  theme(plot.background = element_rect(fill = myPink, color = "black", size = 3)) # from plot 2
+
+z
+```
+"Starting with object z, add a theme() function to:
+
+remove the grid lines using the panel.grid argument.
+add red axis lines using the axis.line argument.
+change the tick marks to red using the axis.ticks argument, similar to how you specified axis.line."
+
+```{r}
+# Extend z using theme() function and 3 args
+z <- z +
+  theme(panel.grid = element_blank(),
+  axis.line = element_line(color = "red"),
+  axis.ticks = element_line(color = "red"))
+
+z
+```
+"Next we can make the text on your plot prettier and easier to spot. You can do this through the element_text() function and by passing the appropriate arguments inside the theme() function."
+
+IMPORTANT: make sure all text is legible for the context in which your plot will be viewed.
+```{r}
+myRed <- "#99000D"
+
+# Extend z with theme() function and 3 args
+z <- z +
+  theme(strip.text = element_text(size = 16, color = myRed),
+        axis.title = element_text(color = myRed, hjust = 0, face = "italic"),
+        axis.text = element_text(color = "black"))
+
+z
+```
+Experiment with different legend positions to see what makes the plot easiest to work with.
+
+```{r}
+# Move legend by position
+z +
+  theme(legend.position = c(0.85, 0.85))
+
+# Change direction
+z +
+  theme(legend.direction = "horizontal")
+  
+# Change location by name
+z +
+  theme(legend.position = "bottom")
+
+# Remove legend entirely and save as z
+z <- z +
+  theme(legend.position = "none")
+
+z
+```
+"The different rectangles of your plot have spacing between them. There's spacing between the facets, between the axis labels and the plot rectangle, between the plot rectangle and the entire panel background, etc. Let's experiment!
+
+Suppose you want to have more spacing between the different facets. You can control this by specifying panel.spacing.x inside a theme() function you add to z. For the argument value, you should pass a unit object. To achieve this, load the grid package with library(). Next, set panel.spacing.x to unit(2, "cm").
+Copy, adapt and paste the plot command for the previous instruction: to adjust the plot margin, set plot.margin to unit(c(1,2,1,1), "cm") (spacing for top, right, bottom, and left margins)."
+```{r}
+# Increase spacing between facets
+library(grid)
+
+z +
+  theme(panel.spacing.x = unit(2, "cm"))
+
+
+# Adjust the plot margin
+z +
+  theme(panel.spacing.x = unit(2, "cm"), plot.margin = unit(c(1,2,1,1), "cm"))
+
+```
+If we have multiple plots in our presentation or paper, we want to use a consistent style for visual continuity. We can make this easier by defining our theme once and reusing it. Let's consider a plot from earlier in the course and modify it.
+
+```{r}
+z <- ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) +
+  geom_jitter(alpha = 0.7) +
+  scale_color_brewer("Species", palette = "Dark2", labels = c("Setosa", "Versicolor", "Virginica")) +
+  scale_y_continuous("Width (cm)", limits = c(2, 4.5), expand = c(0,0)) +
+  scale_x_continuous("Length (cm)", limits = c(4,8), expand = c(0,0)) +
+  ggtitle("Sepals") +
+  coord_fixed(1)
+
+z
+```
+We can adjust theme arguments to get a desired plot style:
+```{r}
+theme_iris <- theme(panel.background = element_blank(),
+          legend.background = element_blank(),
+          legend.key = element_blank(),
+          panel.grid = element_blank(),
+          axis.text = element_text(color = "black"),
+          axis.line = element_line(color = "black"),
+          plot.title = element_text(hjust = 0.5))
+
+z + theme_iris
+```
+Let's use our theme on another plot we made earlier. Note that because we didn't account for faceting in our theme, it doesn't quite handle correctly at first:
+```{r}
+m <- ggplot(iris.wide, aes(x = Length, y = Width, col = Part)) +
+  geom_point() +
+  facet_grid(. ~ Species)
+
+m
+m + theme_iris
+```
+We want to remove the rectangles from the facet titles. We can extend our theme rather than redefining from scratch:
+```{r}
+theme_iris <- theme_iris +
+  theme(strip.background = element_blank())
+
+m + theme_iris
+```
+If we attempt to use a discrete x axis instead of continuous, we have some issues at first but can define a derivative theme with some changes.
+```{r}
+p <- ggplot(iris.tidy, aes(x = Measure, y = Value, col = Part)) +
+  geom_point(position = position_jitter(0.1), alpha = 0.6) +
+  scale_y_continuous("Value (cm)", limits = c(0, 8), expand = c(0, 0)) +
+  facet_grid(. ~ Species)
+
+p
+```
+When we apply the above theme, we end up with tick marks on the x-axis that we don't want for discrete values:
+```{r}
+p + theme_iris
+```
+```{r}
+theme_iris_disX <- theme_iris +
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1))
+
+p + theme_iris_disX
+```
+There are also built-in theme templates and the __ggthemes__ package with even more sets. The most useful is `theme_tufte`, which removes all non-data ink and sets the font to a serif type.
+
+To update the original theme used for all plots, use `theme_update` and save to an object `original`. `original` contains the settings *of the previous theme*:
+```{r}
+#original <- theme_update(panel.background = element_blank(),
+#                         legend.background = element_blank(),
+#                         legend.key = element_blank(),
+#                         panel.grid = element_blank(),
+#                         axis.text = element_text(color = "black"),
+#                         axis.line = element_line(color = "black"),
+#                         axis.ticks = element_line(color = "black"),
+#                         strip.background = element_blank())
+```
+If we know we always want to use the same theme, we can set it at the top of our script using `theme_set` - for example, `theme_set(theme_tufte())`. We can return to the original theme, which if we haven't saved it is `theme_grey`, by calling `theme_set(original)` on the object we created using `theme_update`.
+```{r}
+# Original plot
+#z2
+
+# Load ggthemes
+#library(ggthemes)
+
+# Apply theme_tufte(), plot additional modifications
+#custom_theme <- theme_tufte() +
+#  theme(legend.position = c(0.9, 0.9),
+#        legend.title = element_text(face = "italic", size = 12),
+#        axis.title = element_text(face = "bold", size = 14))
+
+# Draw the customized plot
+#z2 + custom_theme
+ 
+# Use theme set to set custom theme as default
+#theme_set(custom_theme)
+
+# Plot z2 again
+#z2
+
+```
+
+## Common pitfalls in data visualization - Dynamite plots
+
+
+Consider the dynamite plot. It gives a naive impression of the data set. First, it omits information about sample size, which must be added to a legend in some way. The bars also give the impression of data where there are none - the vertical space filled by the bars extends to 0, but we have no way to know whether any data points actually extend to 0 and in general they likely will not. Worse, the plot implies the data are normally distributed - that's what it suggests when mean and standard deviation are used. If the data are not normally distributed, then we are doing a disservice to our readers and our data. We also see no visual confirmation of where data points are - the region above the mean - as our bar simply ends at the mean. Whenever possible, show all the data, and at the very least avoid bar plots. 
+```{r}
+# Base layers
+m <- ggplot(mtcars, aes(x = cyl, y = wt))
+
+# Draw dynamite plot
+m +
+  stat_summary(fun.y = mean, geom = "bar", fill = "skyblue") +
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.1)
+```
+```{r}
+# Base layers
+m <- ggplot(mtcars, aes(x = cyl,y = wt, col = am, fill = am))
+
+# Plot 1: Draw dynamite plot
+m +
+  stat_summary(fun.y = mean, geom = "bar") +
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.1)
+
+# Plot 2: Set position dodge in each stat function - suboptimal because default dodge size differs for geom
+m +
+  stat_summary(fun.y = mean, geom = "bar", position = "dodge") +
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), 
+               geom = "errorbar", width = 0.1, position = "dodge")
+
+# Set your dodge posn manually
+posn.d <- position_dodge(0.9)
+
+# Plot 3: Redraw dynamite plot with same magnitude dodge for bar and errorbar
+m +
+  stat_summary(fun.y = mean, geom = "bar", position = posn.d) +
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.1, position = posn.d)
+```
+## Common pitfalls - Pie charts and alternative parallel coordinates plot
+
+Pie charts are asking how the parts of a whole proportions differ between categories. But people naturally use different encoding elements to decode a pie chart - angle, area, and arc length. These are all mediocre encoding elements, and they are subject to different interpretations. Difficulty in decoding extends further when there are multiple pie charts.
+
+A bar plot with position = "fill" conveys this same information and has only the linear scale to worry about. An unfortunate side effect is that only the top and bottom elements of the groups are on common starting scales when comparing multiple adjacent filled bars, but it is still a more accurate representation than the pie chart.
+
+Pie charts can be useful when comparing no more than 3 groups in a chart.
+
+```{r}
+# Bar chart
+ggplot(mtcars, aes(x = cyl, fill = am)) +
+  geom_bar(position = "fill")
+
+# Convert bar chart to pie chart
+ggplot(mtcars, aes(x = factor(1), fill = am)) + # dummy x variable
+  geom_bar(position = "fill", width = 1) +
+  facet_grid(. ~ cyl) + # Facets
+  coord_polar(theta = "y") + # Coordinates
+  theme_void() # theme
+  
+```
+"In the previous example, we looked at one categorical variable (am) as a proportion of another (cyl). Here, we're interested in two or more categorical variables, independent of each other. The many pie charts in the viewer is an unsatisfactory visualization. We're interested in the relationship between all these variables (e.g. where are 8 cylinder cars represented on the Transmission, Gear and Carburetor variables?) Perhaps we also want continuous variables, such as weight. How can we combine all this information?
+
+The trick is to use a parallel coordinates plot, like this one. Each variable is plotted on its own parallel axis. Individual observations are connected with lines, colored according to a variable of interest. This is a surprisingly useful visualization since we can combine many variables, even if they are on entirely different scales.
+
+A word of caution though: typically it is very taboo to draw lines in this way. It's the reason why we don't draw lines across levels of a nominal variable - the order, and thus the slope of the line, is meaningless. Parallel plots are a (very useful) exception to the rule!
+
+am is variable 9 in the mtcars data frame. Assign this number to group_by_am. The object my_names_am will contain a numeric vector from 1 - 11 excluding the column with am. These will be our parallel axes.
+Fill in the ggparcoord() function.
+The first argument is the data frame you're using. mtcars in our case.
+The second argument is the number of the columns to plot (use my_names_am),
+groupColumn specifies the column number of the grouping variable (use group_by_am)
+alpha, the opacity, should be set to 0.8"
+```{r}
+# Parallel coordinates plot using GGally
+library(GGally)
+
+# All columns except am
+group_by_am <- 9
+my_names_am <- (1:11)[-group_by_am]
+
+# Basic parallel plot - each variable plotted as a z-score transformation
+ggparcoord(mtcars, my_names_am, groupColumn = group_by_am, alpha = 0.8)
+```
+"The parallel coordinate plot from the last exercise is an excellent example of an exploratory plot. It presents a massive amount of information and allows the specialist to explore many relationships all at once. Another great example is a plot matrix (a SPLOM, from scatter plot matrix).
+
+GGally::ggpairs(mtcars2) will produce the plot of a selection of the mtcars dataset, mtcars2, in the viewer. Depending on the nature of the dataset a specific plot type will be produced and if both variables are continuous the correlation (rho) will also be calculated.
+
+The relationship between the variables drat and mpg is shown in two areas. What is the correlation between these two variables?"
+```{r}
+library(tidyverse)
+mtcars_sub <- mtcars %>% select(mpg, cyl, disp, hp, drat)
+
+GGally::ggpairs(mtcars_sub)
+```
+## Common pitfalls - Heat maps and alternatives
+
+Heat maps are a very common data visualization choice, but they are not very effective. Let's consider them and some alternatives.
+```{r}
+head(barley)
+
+barley.s <- spread(data = barley, key = year, value = yield)
+
+head(barley.s)
+```
+We want to facet on site, and for each plot we want two x columns, one each per year. For each plot, the y aesthetic is the ten varieties of wheat, and the value is plotted on a continuous color scale determined by the yield. We plot the `barley` data set, with `y = variety`, `x = year`, `fill = yield`, and `facet_grid(site ~ .)`.
+
+For one issue, it is difficult to map color onto a continuous scale. This is an especially important issue for heat maps, as our perception of color changes depending on context, such as neighboring colors. This makes heat maps poorly suited for seeing individual results, even in a small dataset like barley yields. They can be okay at communicating overall trends if the data is clustered in such a way to evoke those trends, but as that often doesn't happen there is frequently no take-home message. Often the only thing being elicited is a "wow factor" because heat maps look complex, especially when using a multi-color gradient, but once you get over that you will realize there are better ways to represent the data.
+
+Plotting continuous data on a common scale is always the best option. In the case of the `barley` dataset, we can switch `x = yield` and `fill = year`. Furthermore, we can arrange the sites in such a way that they show a trend - if we arrange (Grand Rapids, Duluth, University Farm, Morris, Crookston, Waseca) we see they are arranged in general from lowest to highest yield. We can see some farms had a big difference between years and others had relatively little, and we can see that in general 1931 was a better year than 1932 except at Morris. These insights were not clear in the heat map but can be seen in a scatter plot.
+
+This is a very detailed graph that allows you to make effective but slow answers to pointed questions - like which variety performs best in a given year, or how yield for a given variety varies from farm to farm. It can be good when you have time to  look in-depth, like for exploratory analysis, but it might not be a good choice when you want to publish.
+
+What we actually care about in many cases is change over time, such as in this case where there are 2 years. A line plot is a much better fit for quickly determining trends in the dataset by increasing speed of perception. It's less precise for answering some of the other questions in detail, but the increased speed of perception is worth a lot in clearly communicating the exact message you care about. 
+
+"In the video you saw reasons for not using heat maps. Nonetheless, you may encounter a case in which you really do want to use one. Luckily, they're fairly straightforward to produce in ggplot2.
+
+We begin by specifying two categorical variables for the x and y aesthetics. At the intersection of each category we'll draw a box, except here we call it a tile, using the geom_tile() layer. Then we will fill each tile with a continuous variable.
+
+We'll produce the heat map we saw in the video with the built-in barley dataset. The barley dataset is in the lattice package and has already been loaded for you. Begin by exploring the structure of the data in the console using str()."
+```{r}
+# Create color palette
+myColors <- brewer.pal(9, "Reds")
+
+barley$year <- ordered(barley$year, levels = c(1931, 1932))
+
+
+# Build the heat map from scratch
+ggplot(barley, aes(x = year, y = variety, fill = yield)) +
+  geom_tile() + # Geom layer
+  facet_wrap( ~ site, ncol = 1) + # Facet layer
+  scale_fill_gradientn(colors = myColors) # Adjust colors
+```
+```{r}
+barley$year <- ordered(barley$year, levels = c(1931, 1932))
+
+# Line plot; set the aes, geom and facet
+ggplot(barley, aes(x = year, y = yield, col = variety, group = variety)) +
+geom_line() +
+facet_wrap( ~ site, nrow = 1)
+```
+"Whenever you see a heat map, ask yourself it it's really necessary. Many people use them because they look fancy and complicated - signs of poor communication skills."
+
+```{r}
+# Create overlapping ribbon plot from scratch
+barley$year <- ordered(barley$year, levels = c(1931, 1932))
+
+ggplot(barley, aes(x = year, y = yield, col = site, fill = site, group = site)) +
+stat_summary(fun.y = mean, geom = "line") +
+stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "ribbon", col = NA, alpha = 0.1)
+``` 
+
+## Mosaic plots 
+
+Consider a plot comparing the four categories of BMI across age. We have a data frame representing 67 ages and 4 BMI categories = 268 different groups. We are interested in unusual patterns in the dataset.
+
+A mosaic plot draws a grid of rectangles with a different rectangle for each group, rather than a set of grouped segmented bars with multiple colors per bar. The sizes of the rectangles vary across groups in both dimensions, with the rectangle width representing the x variable (in this case, individuals of a given age) and the heights vary according to the y variable (in this case, proportion of BMI category). Highlight this difference by outlining the rectangles in white, highlighting the different boxes.
+
+Essentially a mosaic plot shows a giant contingency table derived from two categorical variables: age and BMI category. We want to ask whether the proportions of our groups vary significantly from the null of expecting the same proportions of each group. We can answer this with a chi-squared test, which mosaic plots help visualize.
+
+More specifically, we want to know whether the proportions of one variable within groups of another variable vary significantly from the null model of equal proportions.
+
+Consider this example of a contingency table:
+```{r}
+
+Democrat <- c(762, 484)
+Independent <- c(327, 239)
+Republican <- c(468, 477)
+
+
+cont_table = cbind(Democrat, Independent, Republican)
+rownames(cont_table) = c("F", "M")
+cont_table
+
+```
+When we perform a chi-squared test, the results are provided as _residuals_, which provides information about the difference between the observed and expected values under the null hypothesis of equal proportions.
+```{r}
+chisq.test(cont_table)$residuals
+```
+```{r}
+library(vcd)
+mosaic(cont_table, shade = TRUE, color = TRUE)
+```
+So the mosaic plot not only visualizes different proportions of group sizes reflected in the contingency table, but also reports on the underlying statistical difference between the groups. You can really easily see the differences in relative representation between groups.
+
+That concludes course 2 on __ggplot2__. The concepts and practice of good data visualizations are essential skills for any data analyst, regardless of domain.
+
+Remember to consider the purpose and audience of visualizations before releasing them. 
+
+The last course covers advances statistical plots, graphics of large datasets, ggplot2 internals, and some accessory packages.
+
+"In the previous exercise we looked at different ways of showing the frequency distribution within each BMI category. This is all well and good, but the absolute number of each age group also has an influence on if we will consider something as over-represented or not. Here, we will proceed to change the widths of the bars to show us something about the n in each group.
+
+This will get a bit more involved, because the aim is not to draw bars, but rather rectangles, for which we can control the widths. You may have already realized that bars are simply rectangles, but we don't have easy access to the xmin and xmax aesthetics, but in geom_rect() we do! Likewise, we also have access to ymin and ymax. So we're going to draw a box for every one of our 268 distinct groups of BMI category and age.
+
+The clean adult dataset, as well as BMI_fill, are already available. Instead of running apply() like in the previous exercise, the contingency table has already been transformed to a data frame using as.data.frame.matrix()."
+
+"To build the rectangle plot, we'll add several variables to DF:
+groupSum, containing the sum of each row in the DF. Use rowSums() to calculate this. groupSum represents the total number of individuals in each age group.
+xmax: the xmax value for each rectangle, calculated as cumsum(DF$groupSum)
+xmin: the xmin value for each rectangle, calculated by subtracting the groupSum column from the xmax column.
+The names of the x axis groups are stored in the row names, which is pretty bad style, so make a new variable, X, that stores the values of row.names() for DF.
+Now we are ready to melt the dataset. Load reshape2 and use melt() on DF. Specify the id.vars variables as c("X", "xmin", "xmax") and the variable.name argument as "FILL". Store the result as DF_melted.
+Have a look at the dplyr call that calculates the ymax and ymin columns of DF_melted. It first groups by X and then calculates cumulative proportions. The result is stored as DF_melted again.
+If all goes well you should see the plot in the viewer when you execute the plotting function at the bottom of the script."
+```{r}
+# The initial contingency table
+#DF <- as.data.frame.matrix(table(adult$SRAGE_P, adult$RBMI))
+
+# Create groupSum, xmax and xmin columns
+#DF$groupSum <- rowSums(DF)
+#DF$xmax <- cumsum(DF$groupSum)
+#DF$xmin <- DF$xmax - DF$groupSum
+# The groupSum column needs to be removed; don't remove this line
+#DF$groupSum <- NULL
+
+# Copy row names to variable X
+#DF$X <- row.names(DF)
+
+# Melt the dataset
+#library(reshape2)
+#DF_melted <- melt(DF, id.vars = c("X", "xmin", "xmax"), variable.name = "FILL")
+
+# dplyr call to calculate ymin and ymax - don't change
+#library(dplyr)
+#DF_melted <- DF_melted %>%
+#  group_by(X) %>%
+#  mutate(ymax = cumsum(value/sum(value)),
+         ymin = ymax - value/sum(value))
+
+# Plot rectangles - don't change
+#library(ggthemes)
+#ggplot(DF_melted, aes(ymin = ymin,
+#                 ymax = ymax,
+#                 xmin = xmin,
+#                 xmax = xmax,
+#                 fill = FILL)) +
+#  geom_rect(colour = "white") +
+#  scale_x_continuous(expand = c(0,0)) +
+#  scale_y_continuous(expand = c(0,0)) +
+#  BMI_fill +
+#  theme_tufte()
+```
+"In the previous exercise we generated a plot where each individual bar was plotted separately using rectangles (shown in the viewer). This means we have access to each piece and we can apply different fill parameters.
+
+So let's make some new parameters. To get the Pearson residuals, we'll use the chisq.test() function.
+
+The data frames adult and DF_melted, as well as the object BMI_fill that you created throughout this chapter, are all still available. The reshape2 package is already loaded.
+
+Use the `adult$RBMI` (corresponding to FILL) and `adult$SRAGE_P` (corresponding to X) columns inside the table() function that's inside the chisq.test() function. Store the result as results.
+The residuals can be accessed through results$residuals. Apply the melt() function on them with no further arguments. Store the resulting data frame as resid.
+Change the names of resid to c("FILL", "X", "residual"). This is so that we have a consistent naming convention similar to how we called our variables in the previous exercises.
+The data frame from the previous exercise, DF_melted is already available. Use the merge() function to bring the two data frames together. Store the result as DF_all.
+Adapt the code in the ggplot command to use DF_all instead of DF_melted. Also, map residual onto fill instead of FILL."
+
+```{r}
+# Perform chi.sq test (RBMI and SRAGE_P)
+#results <- chisq.test(table(adult$RBMI, adult$SRAGE_P))
+
+# Melt results$residuals and store as resid
+#resid <- melt(results$residuals)
+
+# Change names of resid
+#names(resid) <- c("FILL", "X", "residual")
+
+# merge the two datasets:
+#DF_all <- merge(DF_melted, resid)
+
+# Update plot command
+#library(ggthemes)
+#ggplot(DF_all, aes(ymin = ymin,
+#                   ymax = ymax,
+#                   xmin = xmin,
+#                   xmax = xmax,
+#                   fill = residual)) +
+#  geom_rect() +
+#  scale_fill_gradient2() +
+#  scale_x_continuous(expand = c(0,0)) +
+#  scale_y_continuous(expand = c(0,0)) +
+#  theme_tufte()
+```
+
+"Since we're not coloring according to BMI, we have to add group (and x axis) labels manually. Our goal is the plot in the viewer.
+
+For this we'll use the label aesthetic inside geom_text(). The actual labels are found in the FILL (BMI category) and X (age) columns in the DF_all data frame. (Additional attributes have been set inside geom_text() in the exercise for you).
+
+The labels will be added to the right (BMI category) and top (age) inner edges of the plot. (We could have also added margin text, but that is a more advanced topic that we'll encounter in the third course. This will be a suitable solution for the moment.)
+
+The first two commands show how we got the the four positions for the y axis labels. First, we got the position of the maximum xmax values, i.e. at the very right end, stored as index. We want to calculate the half difference between each pair of ymax and ymin (e.g. (ymax - ymin)/2) at these index positions, then add this value to the ymin value. These positions are stored in the variable yposn.
+
+We'll begin with the plot thus far, stored as object p. In the sample code, %+% DF_all refreshes the plot's dataset with the extra columns.
+
+Plot 1: In the geom_text() function, define the x, y and label aesthetics.
+
+Set x to max(xmax), so the labels are on the right side of the plot.
+
+Set the position of y to yposn.
+
+Set the label text to FILL.
+
+Plot 2: The same thing for the x axis label positions. You don't need to find an index here, since you can use the same y position for all these labels: 1.
+
+Calculate the half difference between each pair of xmax and xmin then add this value to xmin.
+
+Complete the plot command by adding the labels in the xposn to our plot, the label this time will be X, which in this case is the age.
+
+This plot isn't perfect, but it does a pretty good job for an exploratory plot."
+```{r}
+# Plot so far
+#p
+
+# Position for labels on y axis (don't change)
+#index <- DF_all$xmax == max(DF_all$xmax)
+#DF_all$yposn <- DF_all$ymin[index] + (DF_all$ymax[index] - DF_all$ymin[index])/2
+
+# Plot 1: geom_text for BMI (i.e. the fill axis)
+#p1 <- p %+% DF_all + 
+#  geom_text(aes(x = max(xmax), 
+#               y = yposn,
+#               label = FILL),
+#            size = 3, hjust = 1,
+#            show.legend  = FALSE)
+#p1
+
+# Plot 2: Position for labels on x axis
+#DF_all$xposn <- DF_all$xmin + (DF_all$xmax - DF_all$xmin)/2
+
+# geom_text for ages (i.e. the x axis)
+#p1 %+% DF_all + 
+#  geom_text(aes(x = xposn, label = X),
+#            y = 1, angle = 90,
+#            size = 3, hjust = 1,
+#            show.legend = FALSE)
+```
+
+```{r}
+library(reshape2)
+library(ggthemes)
+
+mosaicGG <- function(data, X, FILL) {
+  # Proportions in raw data
+  DF <- as.data.frame.matrix(table(data[[X]], data[[FILL]]))
+  DF$groupSum <- rowSums(DF)
+  DF$xmax <- cumsum(DF$groupSum)
+  DF$xmin <- DF$xmax - DF$groupSum
+  DF$X <- row.names(DF)
+  DF$groupSum <- NULL
+  DF_melted <- melt(DF, id = c("X", "xmin", "xmax"), variable.name = "FILL")
+  DF_melted <- DF_melted %>%
+    group_by(X) %>%
+    mutate(ymax = cumsum(value/sum(value)),
+           ymin = ymax - value/sum(value))
+
+  # Chi-sq test
+  results <- chisq.test(table(data[[FILL]], data[[X]])) # fill and then x
+  resid <- melt(results$residuals)
+  names(resid) <- c("FILL", "X", "residual")
+
+  # Merge data
+  DF_all <- merge(DF_melted, resid)
+
+  # Positions for labels
+  DF_all$xposn <- DF_all$xmin + (DF_all$xmax - DF_all$xmin)/2
+  index <- DF_all$xmax == max(DF_all$xmax)
+  DF_all$yposn <- DF_all$ymin[index] + (DF_all$ymax[index] - DF_all$ymin[index])/2
+
+  # Plot
+  g <- ggplot(DF_all, aes(ymin = ymin,  ymax = ymax, xmin = xmin,
+                          xmax = xmax, fill = residual)) +
+  geom_rect(col = "white") +
+  geom_text(aes(x = xposn, label = X),
+            y = 1, size = 3, angle = 90, hjust = 1, show.legend = FALSE) +
+  geom_text(aes(x = max(xmax),  y = yposn, label = FILL),
+            size = 3, hjust = 1, show.legend = FALSE) +
+  scale_fill_gradient2("Residuals") +
+  scale_x_continuous("Individuals", expand = c(0,0)) +
+  scale_y_continuous("Proportion", expand = c(0,0)) +
+  theme_tufte() +
+  theme(legend.position = "bottom")
+  print(g)
+}
+```
+Try out the new mosaic plot function on two of the other data sets we used:
+```{r}
+# mtcars: am described by cyl
+mosaicGG(mtcars, "am", "cyl")
+
+# Vocab: vocabulary described by education
+library(carData)
+mosaicGG(Vocab, "education", "vocabulary")
+```
+
