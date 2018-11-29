@@ -1,0 +1,717 @@
+---
+title: "machine-learning"
+author: "Amy Gill"
+date: "November 19, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dslabs)
+library(tidyverse)
+library(caret)
+```
+
+## Introduction to Machine Learning
+
+Machine learning algorithms are built on data. Popular examples of machine learning include zip code readers, speech recognition technology, movie recomendation systems, and driverless cars.
+
+Machine learning data comes in the form of the **outcome** we want to predict and the **features** that we will use to predict the outcome.
+
+We want to build an algorithm that takes feature values as input and returns a prediction for unknown outcome. Machine learning first *trains* an algorithm on a dataset for which we do know the outcome, then applies this algorithm in the future to make predictions on unknowns.
+
+Here, $Y$ to denote the outcome and $X_1, \dots, X_p$ to denote features. Features can also be called predictors or covariates.
+
+Prediction can be done for both categorical and continuous outcomes. For categorical variables, $Y$ can be any one of $K$ classes. The number of classes varies widely depending on application. The $K$ categories are typically indexed $k = 1, ..., K$, except when using binary data in which case $k = 0, 1$ for mathematical convenience.
+
+Consider a model where we want to predict an outcome $Y$. We have five unknowns. $X_1, X_2, X_3, X_4, X_5$.
+To build a model that provides a prediction for any set of values $X_1 = x_1, X_2 = x_2, X_3 = x_3, X_4 = x_4,X_5 = x_5$, we collect data for which we know the outcome:
+
+$Y_1 = X_{1,1}, X_{1,2}, X_{1,3}, X_{1,4},X_{1,5}$,
+$Y_2 = X_{2,1}, X_{2,2}, X_{2,3}, X_{2,4},X_{2,5}$,
+$Y_3 = X_{3,1}, X_{3,2}, X_{3,3}, X_{3,4},X_{3,5}$, ...
+
+We use $\hat{Y}$ to denote the prediction and *actual outcome* to denote the observation. We want the prediction $\hat{Y}$ to match the actual outcome.
+
+The outcome $Y$ can be categorical or continuous. The concepts and algorithms here apply to both, but there are important distinctions.
+
+When the outcome is *categorical*, we refer to the machine learning task as *classification*. We classify our outcomes and they will either be correct or not. When the outcome is *continuous*, we call the task *prediction*. Our predictions will not be either right or wrong; instead, we will make an *error*, which is the difference between the prediction and the actual outcome.
+
+Note that prediction can be used interchangeably for both cases, and sometimes regression refers to the continuous case.
+
+### An example
+
+Consider zip code readers at the post office. The envelope is scanned by machine and images of each digit are converted into 28x28 = 784 pixels, with each pixel assigned a grayscale intensity 0 (white) to 255 (black). We can consider these values continuous for now.
+
+For each digitized image $i$, we have a categorical outcome $Y_i$, which can be one of 10 classes: the digits 0-9, and features $\mathbf{X}_i = (X_{i,1}, \dots, X_{i,784})$. Note that bold face $\mathbf{X_i}$ distinguishes the vector of predictors from individual predcitors. Also note that to specify a general set of features rather than a specific observation $i$, we drop the index $i$ and refer to $Y$ and $\mathbf{X} = (X_1, \dots, X_{784})$. Uppercase is typically used for predictors and categories as we treat them as random variables. We use lowercase $\mathbf{X} = \mathbf{x}$ to refer to observed values.
+
+Our machine learning task here is to build an algorithm that will return a classification $Y$ for any possible value of the features $\mathbf{X}$. There are several ways to build these algorithms, and we will learn several approaches.
+
+### Exercises: Intro to Machine Learning
+
+1. Are these continuous or categorical outcomes?
+  
+  A. Digit reader - categorical
+  
+  B. Movie recommendations - continuous
+  
+  C. Spam filter - categorical
+  
+  D. Hospitalizations - continuous
+  
+  E. Siri - categorical
+  
+2. How many features are available for prediction in the digits data set? $\mathbf{X_n}$ where n = 784 pixels.  
+
+3. In the digit reader example, the outcomes are stored here:
+```{r}
+mnist <- read_mnist()
+
+y <- mnist$train$labels
+
+y[5]
+
+y[6]
+```
+
+## Evaluating algorithms: Overall accuracy, confusion matrix, prevalence, sensitivity, specificity
+
+We focus on describing methods to evaluate machine learning algorithms. As our case study, we take the simple example of using a single predictor, height, to determine whether an individual is male or female, a categorical outcome. We use the heights dataset here:
+```{r}
+data(heights)
+```
+
+The outcome is sex and the single predictor is height.
+```{r}
+y <- heights$sex
+x <- heights$height
+```
+
+With only one predictor, and known significant overlap between male and female height ranges, we expect we will not be able to get high accuracy. Can we do better than guessing, though? We need to define metrics to answer this question.
+
+A machine learning algorithm is ultimately measured by how it performs on untested data sets. When developing the algorithm, we typically have a data set for which we know outcomes. Thus, to mimic the evaluation process, we split the data randomly into *training* and *test* sets. We use the training set to build our algorithm, then we apply the algorithm to our test set and measure how well our predictions match the known outcomes of the test set.
+
+We will use the __caret__ package for several convenient machine learning functions. __caret__ facilitates random construction of training and test sets with the `createDataPartition` function:
+
+```{r}
+set.seed(2)
+
+# caret::createDataPartition
+# y = data set (full)
+# times = number of samples to draw
+# p = proportion of list to draw per sample
+# list = return as list or not
+# returns indices of data subset(s)
+test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+
+test_set <- heights[test_index, ]
+train_set <- heights[-test_index, ]
+```
+
+We now develop an algorithm using only the training set, then freeze the algorithm and evaluate it using the test set.
+
+### Overall accuracy
+
+The easiest way to evaluate categorical outcomes is to report the proportion of cases correctly predicted in the test set. This is *overall accuracy*.
+
+Consider if we guess the outcome. We expect an overall accuracy around 0.5, or 50%.
+
+```{r}
+# guess whether each individual is male or female
+y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE) %>%
+  factor(levels = levels(test_set$sex))
+
+mean(y_hat == test_set$sex)
+```
+
+Note that we use factors. When working with categorical outcomes, many R packages and functions designed for machine learning require or recommend factor coding.
+
+Can we do better? Exploratory data analysis suggests males tend to be taller than females:
+```{r}
+heights %>%
+  group_by(sex) %>%
+  summarize(mean(height), sd(height))
+```
+We could use this information to choose a cutoff height above which we predict male and below which we predict female. What cutoff do we choose? We can try a few different cutoff heights and see what gives us the best metric, in this case overall accuracy. **IMPORTANT: optimize your cutoff using only the training set**. The test set is only for evaluation. Using the test set for modeling can lead to *overfitting* that overestimates the performance of the algorithm. We want the test set uninvolved in algorithm design so that it simulates an independent data set.
+
+This examines the accuracy of 10 different cutoffs in the training set:
+```{r}
+cutoff <- seq(61, 70)
+accuracy <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train_set$height > x, "Male", "Female") %>%
+    factor(levels = levels(test_set$sex))
+  mean(y_hat == train_set$sex)
+})
+
+data.frame(cutoff, accuracy) %>%
+  ggplot(aes(cutoff, accuracy)) +
+  geom_point() +
+  geom_line()
+```
+The maximum accuracy is much better than 0.5:
+```{r}
+max(accuracy)
+```
+
+The cutoff resulting in this accuracy is:
+```{r}
+best_cutoff <- cutoff[which.max(accuracy)]
+best_cutoff
+```
+
+Let's test the algorithm on our test set to negate chance of overfitting:
+```{r}
+y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>%
+  factor(levels = levels(test_set$sex))
+
+mean(y_hat == test_set$sex)
+```
+
+This is way better than guessing, and since we checked on a test set that was not used for training, we can be confident the result is not due to overfitting.
+
+### Confusion matrix
+
+We got over 80% overall accuracy on this data set by guessing `Male` if a student is taller than 64 inches. But the average female is 65 inches tall. Given this information, our prediction rule seems wrong. How could this have occurred?
+
+Check out our original data set: it is hugely biased towards males. (That's what happens when you offer a statistics and data analysis class at Harvard.) There is a high *prevalence* of males.
+```{r}
+summary(heights$sex)
+```
+
+Although our algorithm currently has high overall accuracy, the classification accuracy differs based on sex. We can see this by building a *confusion matrix*, which tabulates each combination of predicted and actual value.
+```{r}
+table(predicted = y_hat, actual = test_set$sex)
+```
+
+Use this to calculate male and female accuracy independently:
+```{r}
+test_set %>%
+  mutate(y_hat = y_hat) %>%
+  group_by(sex) %>%
+  summarize(accuracy = mean(y_hat == sex))
+```
+Too many females are predicted to be male. Yet because so many males are present, the drawback of incorrect `Female` calls is outbalanced by gains in correct `Male` calls. Since the test set comes from the same biased data set as the training set, our use of a training and test set does not fix this issue. Clearly our original metric of overall accuracy is not ideal, too, as it masks this issue.
+
+Biased training sets can be a huge problem in machine learning. If your training data is biased, your algorithms are likely to be biased too. 
+
+Several machine learning algorithms do not rely on prevalence and are less prone to this bias. These can be derived from the confusion matrix.
+
+### Sensitivity and specificity
+
+Sensitivity and specificity are meaningful when there is a binary outcome. Consider predicting zip code digits. We specify a category of interest - say, predicting the digit 2 as opposed to a different possible digit. We can then talk about positive and negative outcomes. In this case, an outcome is positive ($Y = 1$)  if it is 2 and negative ($Y = 0$) if it is a different digit.
+
+An outcome is negative ($Y = 0$) if the prediction is incorrect, that is, if the digit 2 is called but the outcome is another digit, or another digit is called 2.
+
+*Sensitivity* is the ability of an algorithm to correctly predict a positive outcome. That is, sensitivity measures how often if the digit 2 is called and the outcome really is 2. In math notation, sensitivity asks how frequently $\hat{Y} = 1$ given that $Y = 1$.
+
+Because an algorithm that just calls everything a positive outcome has perfect sensitivity, it is not sufficient as an independent metric.
+
+*Specificity* is generally defined as the ability of an algorithm to correctly predict a negative outcome. In this case, specificity measures when 2 is not called and the outcome is really a different digit. In math notation, sensitivity asks how frequently $\hat{Y} = 0$ given that $Y = 0$. It can also be defined as the proportion of positive calls that are actually positive: how frequently $\hat{Y} = 1$ actually matches $Y = 1$.
+
+If sensitivity is high, that implies that positive outcomes tend to be correctly predicted as positive. If specificity is high, that implies that negative outcomes tend to be correctly predicted as negative. High specificity also means that a positive prediction strongly suggests the outcome truly is positive.
+
+Consider the following definitions:
+
+* True positives (TP): actually positive, predicted positive
+* True negatives (TN): actually negative, predicted negative
+* False positives (FP): actually negative, predicted positive
+* False negatives (FN): actually positive, predicted negative
+
+Sensitivity = $\frac{\mbox{TP}}{\mbox{TP} + \mbox{FN}}$, the proportion of actual positives called positive. This quantity is also known as *recall* or the *true positive rate (TPR)*.
+
+Typically, specificity = $\frac{\mbox{TN}}{\mbox{TN} + \mbox{FP}}$, the proportion of negatives called negative. This value is also known as the *true negative rate (TNR)* and is equivalent to 1 - the false positive rate.
+
+Specificity can also be quantified as the proportion of positive calls that are true positives, $\frac{\mbox{TP}}{\mbox{TP} + \mbox{FP}}$. This quantity is known as *precision* and as the *positive predictive value (PPV)* Note that precision depends on prevalence, unlike recall/TPR and TNR.
+
+The caret function `confusionMatrix` computes all these metrics given the definition of a positive outcome. The function expects factors as input,and the first level is considered the "positive" outcome $Y = 1$. In our example, `Female` is the first level because it precedes `Male` alphabetically.
+
+```{r}
+confusionMatrix(data = y_hat, reference = test_set$sex)
+```
+Because prevalence of females is low (0.23), low sensitivity (failing to correctly predict actual females as female) does not lower the overall accuracy as much as low specificity (failing to correctly predict actual males as males). Before we can use our algorithm on other data sets, we need to ask whether the female/male prevalence will resemble our initial data. This is an example of why it is important to examine sensitivity and specificity rather than only overall accuracy.
+
+### Balanced accuracy and $F_1$ score
+
+Sometimes it is useful to have a single-number summary, such as during optimization. An accuracy metric that incorporates sensitivity and specificity is more appropriate than overall accuracy. Two options include *balanced accuracy*, the average of specificity and sensitivity, and the $F_1$*-score*, the harmonic average of precision and recall:
+
+$$F_1 = \frac{1}{\frac{1}{\mbox{recall}} + 
+    \frac{1}{\mbox{precision}} }$$
+
+or, simplified,
+
+$$F_1 = 2 \cdot \frac{\mbox{precision} \cdot \mbox{recall}}{\mbox{precision + recall}}$$
+
+In some contexts, some types of errors are more costly than others. We can weight sensistivity versus specificty by using $\beta$ to weight how much more important sensitivity is, then computing a weighted harmonic average:
+
+$$F_1 = \frac{1}{\frac{\beta^2}{1+\beta^2}\frac{1}{\mbox{recall}} + 
+    \frac{1}{1+\beta^2}\frac{1}{\mbox{precision}} }$$
+    
+The `F_meas` function in the **caret** package conputes this summary with `beta` defaulting to 1.
+
+Let's rebuild our prediction algorithm, but maximizing F-score instead of overall accuracy:
+```{r}
+cutoff <- seq(61, 70)
+F_1 <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train_set$height >x, "Male", "Female") %>%
+    factor(levels = levels(test_set$sex))
+  F_meas(data = y_hat, reference = factor(train_set$sex))
+})
+
+data.frame(cutoff, F_1) %>%
+  ggplot(aes(cutoff, F_1)) +
+  geom_point() +
+  geom_line()
+```
+The maximum $F_1$ value is:
+```{r}
+max(F_1)
+```
+at the cutoff:
+```{r}
+best_cutoff <- cutoff[which.max(F_1)]
+best_cutoff
+```
+This cutoff is more intuitive, and it furthermore balances specificity and sensitivity of the confusion matrix:
+```{r}
+y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>%
+  factor(levels = levels(test_set$sex))
+  
+confusionMatrix(data = y_hat, reference = test_set$sex)
+```
+Now we do much better than guessing, with relatively high metrics on both sensitivity and specificity.
+
+### Prevalence matters in practice
+
+Machine learning algorithms with very high sensitivity and specificity might not be practically useful if the prevalence is close to either 0 or 1.
+
+Consider a doctor who specializes in a rare disease who has asked you to develop an algorithm for predicting who has the disease using his data. You develop an algorithm with very high sensitivity and explain it is very likely to correctly predict when the disease is present. The doctor is more concerned about precision, $\mbox{Pr}(Y = 1 \mid \hat{Y} = 1)$ 
+
+But you're worried because the data set had an even split between patients with and without the disease, so the prevalence is incredibly distorted from the real world. Your final algorithm predicted $\mbox{Pr}(\hat{Y} = 1) = 0.5$, while the known prevalence $\mbox{Pr}(Y = 1) = 0.005$.
+
+Using Bayes' theorem, we can connect the probability of predicting having the disease ($\mbox{Pr}(\hat{Y}=1) = 0.5$), the probability of having the disease ($\mbox{Pr}(Y=1) = 0.005$) and precision ($\mbox{Pr}(Y = 1 \mid \hat{Y} = 1)$): 
+
+$$\mbox{Pr}(Y \mid \hat{Y}=1) = \mbox{Pr}(\hat{Y}=1 \mid Y=1) \frac{\mbox{Pr}(Y=1)}{\mbox{Pr}(\hat{Y}=1)}$$
+Our values show that $\frac{\mbox{Pr}(Y=1)}{\mbox{Pr}(\hat{Y}=1)} = \frac{0.005}{0.5} = 0.01$. Our prediction has precision no greater than 0.01, which means that despite high sensitivity it is practically useless.
+
+## ROC and precision-recall curves
+
+
+
+Let's consider a variant on our random guess of male/female in which we guess male 90% of the time. Since we have a biased data set towards males, this will give us higher accuracy but at the cost of lower sensitivity.
+
+```{r}
+p <- 0.9
+y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob = c(p, 1-p)) %>%
+  factor(levels = levels(test_set$sex))
+mean(y_hat == test_set$sex)
+```
+
+A common approach to compare algorithms is to compare graphically by plotting them both. A widely used plot for this is the *receiver operating characteristic (ROC) curve*. The ROC curve plots the true positive rate (TPR = sensitivity) versus the false positive rate (FPR = 1 - specificity).
+
+Here is an ROC curve for guessing sex using different probabilities of guessing male:
+```{r}
+probs <- seq(0, 1, length.out = 10)
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob = c(p, 1-p)) %>%
+    factor(levels = c("Female", "Male"))
+  list(method = "Guessing",
+       FPR = 1 - specificity(y_hat, test_set$sex),
+       TPR = sensitivity(y_hat, test_set$sex))
+})
+
+guessing %>%
+  qplot(FPR, TPR, data = ., xlab = "1 - Specificity", ylab = "Sensitivity")
+```
+The ROC curve for guessing always looks like a straight line. A change in sensitivity is matched by a roughly equal but opposite change in specificity.
+
+What about our second algorithm based on a height cutoff?
+
+```{r}
+cutoffs <- c(50, seq(60, 75), 80)
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>%
+    factor(levels = c("Female", "Male"))
+  list(method = "Height cutoff",
+       FPR = 1 - specificity(y_hat, test_set$sex),
+       TPR = sensitivity(y_hat, test_set$sex))
+})
+
+height_cutoff %>%
+   qplot(FPR, TPR, data = ., xlab = "1 - Specificity", ylab = "Sensitivity")
+```
+We can compare the curves by plotting them together, allowing us to evaluate sensitivity for different values of specificity:
+```{r}
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(FPR, TPR, color = method)) +
+  geom_line() +
+  geom_point() +
+  xlab("1 - Specificity") +
+  ylab("Sensitivity")
+```
+Using the height cutoff approach, we can see that we obtain higher sensitivity for all values of specificity relative to guessing, which implies it is in fact a better method.
+
+When making ROC curves, it is often nice to label the points with the cutoff used:
+
+```{r}
+map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>%
+    factor(levels = c("Female", "Male"))
+  list(method = "Height cutoff",
+       cutoff = x,
+       FPR = 1 - specificity(y_hat, test_set$sex),
+       TPR = sensitivity(y_hat, test_set$sex))
+  }) %>%
+  ggplot(aes(FPR, TPR, label = cutoff)) +
+  geom_line() +
+  geom_point() +
+  geom_text(nudge_x = -0.01, nudge_y = 0.04)
+```
+The weakness of ROC curves is that neither of the metrics plotted depends on prevalence. In cases where prevalence matters, a precision-recall plot can be used:
+```{r}
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), 
+                  replace = TRUE, prob=c(p, 1-p)) %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Guess",
+    recall = sensitivity(y_hat, test_set$sex),
+    precision = precision(y_hat, test_set$sex))
+})
+
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Height cutoff",
+       recall = sensitivity(y_hat, test_set$sex),
+    precision = precision(y_hat, test_set$sex))
+})
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(recall, precision, color = method)) +
+  geom_line() +
+  geom_point()
+```
+Clearly the precision of guessing is low, which is because the prevalence is low.
+
+Changing the definition of "positive" to `Male` instead of `Female`, the ROC curve is unchanged, but the precision-recall plot is altered:
+
+```{r}
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, 
+                  prob=c(p, 1-p)) %>% 
+    factor(levels = c("Male", "Female"))
+  list(method = "Guess",
+    recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
+    precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
+})
+
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Male", "Female"))
+  list(method = "Height cutoff",
+       recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
+    precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
+})
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(recall, precision, color = method)) +
+  geom_line() +
+  geom_point()
+```
+## Exercises
+
+We analyze the `reported_heights` and `height` data sets collected from three classes taught in the Biostatistics/Computer Science departments at Harvard, both in person (`type = inclass` on date 2016-01-25 at 8:15am) and remotely via the Extension School (`type = online` at a later date after the lecture was posted online).
+
+```{r}
+data("reported_heights")
+library(lubridate)
+
+dat <- mutate(reported_heights, date_time = ymd_hms(time_stamp)) %>%
+  filter(date_time >= make_date(2016, 01, 25) & date_time < make_date(2016, 02, 1)) %>%
+  mutate(type = ifelse(day(date_time) == 25 & hour(date_time) == 8 & between(minute(date_time), 15, 30), "inclass","online")) %>%
+  select(sex, type)
+
+y <- factor(dat$sex, c("Female", "Male"))
+x <- dat$type
+```
+1. Show summary statistics that indicate that the `type` is predictive of sex.
+```{r}
+dat %>%
+  group_by(type) %>%
+  summarize(sum(sex=='Female'), mean(sex == 'Female'), sum(sex == 'Male'), mean(sex == 'Male'))
+```
+
+
+2. Instead of using height to predict sex, use the `type` variable.
+```{r}
+y_hat = ifelse(dat$type == "inclass", "Female", "Male")  %>%
+  factor(levels = c("Female", "Male"))
+
+```
+
+```{r}
+table(predicted = y_hat, actual = y)
+```
+
+
+3. Show the confusion matrix.
+```{r}
+confusionMatrix(data = y_hat, reference = y)
+```
+
+
+4. Use the `confusionMatrix` function in the **caret** package to report accuracy.
+.633
+
+5. Now use `sensitivity` and `specificity` functions to report sensitivity and specificity.
+sensitivity = .3824
+specificity = .8415
+
+6. What is the prevalence (% female) in `dat`?
+.453
+
+We will now build a machine learning algorithm with the `iris` data set with multiple predictors. We will remove the setosa species and focus just on versicolor and virginica for now.
+
+```{r}
+library(caret)
+data(iris)
+iris <- iris[-which(iris$Species == 'setosa'),]
+y <- iris$Species
+```
+
+Q1. Finish the code to generate an even split of the data into training and test partitions using `createDataPartition`.
+
+```{r}
+set.seed(2)
+test_index <- createDataPartition(y, times=1, p=0.5, list=FALSE)
+test <- iris[test_index, ]
+train <- iris[-test_index, ]
+```
+
+Q2. Now we will figure out the singular feature in the data set that yields the greatest overall accuracy.
+
+Using only the `train` data, which of the following is the feature for which a smart cutoff yields the greatest overall accuracy?
+
+```{r}
+train %>%
+  group_by(Species) %>%
+  summarize(mean(Sepal.Length), mean(Sepal.Width), mean(Petal.Length), mean(Petal.Width))
+
+train$Species <- factor(train$Species, levels = c("versicolor", "virginica"))
+```
+Petal.Width
+
+```{r}
+virginica <- train[which(train$Species == 'virginica'), ]
+versicolor <- train[which(train$Species == 'versicolor'), ]
+
+big_species <- ifelse(mean(virginica$Petal.Width) > mean(versicolor$Petal.Width), "virginica", "versicolor")
+
+small_species <- ifelse(mean(virginica$Petal.Width) < mean(versicolor$Petal.Width), "virginica", "versicolor")
+
+cutoff <- seq(min(train$Petal.Width),max(train$Petal.Width), 0.1)
+
+accuracy <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train$Petal.Width > x, big_species, small_species) %>%
+    factor(levels = levels(train$Species))
+  mean(y_hat == train$Species)
+})
+
+qplot(cutoff, accuracy)
+max(accuracy)
+best_cutoff <- cutoff[which.max(accuracy)]
+best_cutoff
+```
+Sepal.Width
+
+```{r}
+big_species <- ifelse(mean(virginica$Sepal.Width) > mean(versicolor$Sepal.Width), "virginica", "versicolor")
+
+small_species <- ifelse(mean(virginica$Sepal.Width) < mean(versicolor$Sepal.Width), "virginica", "versicolor")
+
+cutoff <- seq(min(train$Sepal.Width),max(train$Sepal.Width), 0.1)
+
+accuracy <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train$Sepal.Width > x, big_species, small_species) %>%
+    factor(levels = levels(train$Species))
+  mean(y_hat == train$Species)
+})
+
+qplot(cutoff, accuracy)
+max(accuracy)
+best_cutoff <- cutoff[which.max(accuracy)]
+best_cutoff
+```
+Sepal.Length
+
+```{r}
+big_species <- ifelse(mean(virginica$Sepal.Length) > mean(versicolor$Sepal.Length), "virginica", "versicolor")
+
+small_species <- ifelse(mean(virginica$Sepal.Length) < mean(versicolor$Sepal.Length), "virginica", "versicolor")
+
+cutoff <- seq(min(train$Sepal.Length),max(train$Sepal.Length), 0.1)
+
+accuracy <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train$Sepal.Length > x, big_species, small_species) %>%
+    factor(levels = levels(train$Species))
+  mean(y_hat == train$Species)
+})
+
+qplot(cutoff, accuracy)
+max(accuracy)
+best_cutoff <- cutoff[which.max(accuracy)]
+best_cutoff
+```
+
+Petal.Length
+```{r}
+big_species <- ifelse(mean(virginica$Petal.Length) > mean(versicolor$Petal.Length), "virginica", "versicolor")
+
+small_species <- ifelse(mean(virginica$Petal.Length) < mean(versicolor$Petal.Length), "virginica", "versicolor")
+
+cutoff <- seq(min(train$Petal.Length),max(train$Sepal.Length), 0.1)
+
+accuracy <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train$Petal.Length > x, big_species, small_species) %>%
+    factor(levels = levels(train$Species))
+  mean(y_hat == train$Species)
+})
+
+qplot(cutoff, accuracy)
+max(accuracy)
+best_cutoff <- cutoff[which.max(accuracy)]
+best_cutoff
+```
+Petal.Length in test data
+
+```{r}
+accuracy <- 
+  y_hat <- ifelse(test$Petal.Length > 4.7, big_species, small_species) %>%
+    factor(levels = levels(test$Species))
+  mean(y_hat == test$Species)
+
+```
+
+Writing this as a function for test data
+
+```{r}
+iris_predict <- function(df, col_name_string){
+  dat <- df
+  feature <- col_name_string
+  
+  virginica <- dat[which(dat$Species == 'virginica'), ]
+  versicolor <- dat[which(dat$Species == 'versicolor'), ]
+
+  big_species <- ifelse(mean(virginica[[feature]]) > mean(versicolor[[feature]]), "virginica", "versicolor")
+
+  small_species <- ifelse(mean(virginica[[feature]]) < mean(versicolor[[feature]]), "virginica", "versicolor")
+
+  cutoff <- seq(min(dat[[feature]]), max(dat[[feature]]), 0.1)
+
+  accuracy <- map_dbl(cutoff, function(x){
+    y_hat <- ifelse(dat[[feature]] > x, big_species, small_species) %>%
+      factor(levels = levels(dat$Species))
+    mean(y_hat == dat$Species)
+  })
+  
+  qplot(cutoff, accuracy)
+  max(accuracy)
+  best_cutoff <- cutoff[which.max(accuracy)]
+  
+  print("(Predictor, Best Cutoff, Accuracy)")
+  c(feature, best_cutoff, max(accuracy))
+}
+
+iris_predict(train, "Petal.Length")
+
+
+```
+
+```{r}
+iris_predict(test, "Sepal.Length")
+```
+
+```{r}
+iris_predict(test, "Sepal.Width")
+```
+
+```{r}
+iris_predict(test, "Petal.Width")
+```
+
+```{r}
+iris_predict(test, "Petal.Length")
+```
+
+```{r}
+y_hat <- ifelse(test$Petal.Length > 4.7 | test$Petal.Width > 1.6, big_species, small_species) %>%
+  factor(levels = levels(test$Species))
+
+mean(y_hat == test$Species)
+  
+  
+```
+
+
+## Conditional probability exercises
+
+Assume a patient comes to take a test to figure out whether they have a certain disease.
+
+p(disease) = .02
+p(+|disease) = .85
+p(healthy) = .98
+p(-|healthy) = .90
+p(+|healthy) = 1 - p(-|healthy) = .1
+
+p(disease|+) = p(+|disease)*p(disease)/p(+)
+= .85 * .02 / p(+)
+
+p(+) = p(+|disease) x p(disease) + p(+|healthy) x p(healthy) 
+= .85(.02) + .1(.98) =
+```{r}
+.85*.02 + .098
+```
+
+p(disease|+) = .85 * .02/.115 = 
+```{r}
+.85 * .02/.115
+```
+
+Consider a hypothetical population of 1 million individuals with conditional probabilities as described above.
+
+```{r}
+set.seed(1)
+disease <- sample(c(0,1), size = 1e6, replace = TRUE, prob = c(0.98, 0.02))
+test <- rep(NA, 1e6)
+test[disease==0] <- sample(c(0,1), size = sum(disease==0), replace = TRUE, prob = c(0.9, 0.1))
+test[disease==1] <- sample(c(0,1), size = sum(disease==1), replace = TRUE, prob = c(0.15, 0.85))
+```
+
+What is the probability the test is positive?
+```{r}
+mean(test)
+```
+What is the probability that an individual has the disease if the test is negative?
+```{r}
+table(predicted = test, actual = disease)
+
+```
+
+```{r}
+# p(disease|-) = 
+# = sum(disease|-)/ sum(-)
+# sum(disease|-)/(sum(disease|-) + sum(healthy|-))
+
+mean(disease[test==0]==1)
+```
+What is the probability you have the disease if the test is positive?
+```{r}
+mean(disease[test==1]==1)
+```
+What is the relative risk of having the disease if the test is positive?
+
+Relative risk is calculated by taking the probability of an event occurring for group A and dividing it by the probability of an event occurring for group B. It is similar to odds ratio but calculated using percentages rather than odds ratio.
+
+disease prevalence in data = (3065+16853)/1e6
+```{r}
+mean(disease[test==1]==1)/mean(disease==1)
+```
+
