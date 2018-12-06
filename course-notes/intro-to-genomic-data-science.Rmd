@@ -1,0 +1,103 @@
+---
+title: "Introduction to Genomic Data Science"
+author: "Amy Gill"
+date: "December 6, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Why Genomics?
+
+* human genomics - 99.9% identical, what is driving all the differences we see? We suspect the genome drives this.
+* development encoded in genome - design and differentiation, also responsible for all funcitons
+* cancer genomics - same genome, somehow have gone haywire, dividing without check on their division and survival, consequences of all these cancers share some phenotypes but are different too
+
+* mutation = change in genome
+* can be accident of replication or due to damage
+* 1-3 errors per cell division (1 in a billion)
+* what does it mean if there is an error?
+* that mutation affects a gene, which now functions differently
+* it may lose a check on its function, or eliminate a function, or add a new function
+* if it can't be compensated for by the rest of the cell, there can be consequences (incl cancer)
+
+## The Central Dogma
+
+* DNA -> RNA -> protein
+* information flows in one direction (classically)
+* transcription then translation
+* 4 nucleotides to 20 amino acids
+* 4^3 combinations of codons (triplets)
+* the proteins are what do most of the funcitonal work in your cells - metabolism, 
+
+* but, information doesn't really flow only one way
+* some proteins go back and regulate DNA expression
+* DNA can be modified so that not all of it is expressed the same way
+* sometimes because a protein is sitting on it, sometimes because 
+
+## Genomics
+
+* sequencing is at the heart of the genomics revoluton
+* genome technology has gotten incredibly fast and efficient has become feasible
+* human genome project - 1989-2001 sequencing one human genome, thousands of scientists around the world working around the clock
+* now in a few days a single scientist in one lab can sequence 1 trillion nucleotides of DNA, several hundred human genome equivalents
+
+* now we can sequence the genome of a single tumor
+* thousands of projects happening around the world now sequencing individual tumors
+
+* one investigator can generate these data that quickly, but you still need powerful computers to churn through these data
+* requires a significant mass of computing power
+
+* sequencing has also gotten much cheaper
+* cost per human genome in 2001: $25M
+* 2007: Illumina cost drop
+* continue to drop
+* today ish (2015ish) $1000/genome
+
+* where is all this data?
+* freely available and plenty more to learn from it
+* convention: after you publish on a genomic data set, you're required to submit it
+* NCBI - SRA = Sequence Read Archive
+
+## What is Genomics?
+
+* genomics is the study of genomes
+* genome = all the molecular material inside your cells that defines how your body works
+* can study multiple things
+
+### Structure
+
+* sequence - arrangement of ACGT
+* genome is a set of long long molecules comprised of nucleotides - but only 4 nucleotides
+* human genome - ~3 billion strung together
+* 23 chromosome pairs - 22 autosomes, X/Y
+* within each chromosome, centromere a thte middle, telomeres at ends
+
+### Function
+
+* all the things the genome does
+* encodes everything your body can do
+* instructions for how to make every cell, tissue, organ, system, from embryo
+* instructions for how all of those cells, tissues, organs, systems work dynamically to solve problems and maintain life
+* respiration, metabolism, homeostasis, stress response
+
+### Evolution
+
+* how genomes change over time
+* often evolutionary time - very long periods
+* from generation to generation, our genomes change very little 
+* most generational changes are small, random changes with little effect
+* comparative genomics - across species
+* we share a surprising amount of sequence
+* closest relatives (chimps 6 mya), fruit flies, nematodes, bacteria
+* makes sense - even though we are very different from bacteria, every living things we know uses DNA
+* we share a lot of basic problems of staying alive
+* once a solution to a problem of life is successfully figured out, then why not use it? if it ain't broke, don't fix it.
+* new things are added, and things are tweaked over time, but there is an incentive to keep useful, working things around
+
+### Other basics
+
+* Gene = part of the genome that encodes a functional element - a protein, an RNA
+* (can expand definition of gene to includ other functional elements like enhancers?)
+* older definition = inheritable unit. something you can inherit from your parents.
