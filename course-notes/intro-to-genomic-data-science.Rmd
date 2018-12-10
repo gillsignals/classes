@@ -101,3 +101,17 @@ knitr::opts_chunk$set(echo = TRUE)
 * Gene = part of the genome that encodes a functional element - a protein, an RNA
 * (can expand definition of gene to includ other functional elements like enhancers?)
 * older definition = inheritable unit. something you can inherit from your parents.
+
+### Differences between genomics and traditional biology/genetics
+* genetics = study one gene at a time
+* genomics = study all the genes or a large collection of genes at once
+* because we can capture the whole genome at once in experiments now, a lot of people think it's worth doing that way
+* technology is a big driver of this
+* in the past, people could only do low-throughput experiments, studying one gene at a time instead of one organism
+* now we can simultaneously measure thousands of genes at once
+* in the past, your experimental design had to be clever, they might take years, you had to understand biology and genetics well to ask the right questions and study the right way
+* today, you can still do the same kinds of experiments, some are easier, but the massive date itself is overwhelming
+* because tech is so efficient, it's feasible to measure tens of thousands of genes at once in multiple samples
+* interesting results are probably going to come out, but there's so much and it's so overwhelming that it's hard to figure out where the interesting results are
+* statistical undcertainty, large-scale computation
+* new problems for the field

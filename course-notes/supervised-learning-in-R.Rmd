@@ -1,0 +1,553 @@
+---
+title: "Supervised Learning in R: DataCamp"
+author: "Amy Gill"
+date: "December 8, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Classification with nearest neighbors
+
+* Supervised learning: training an algorithm on prior examples
+* Classification: when the outcome is a category
+
+* Case study: driverless cars
+* Objects viewed by cameras need to be classified before the car can react
+
+* Database of signs and appropriate reaction to those signs
+* consider stop signs, yield signs, speed limit signs
+* map onto feature space - image characteristics = and use an algorithm to match with similar signs to determine appropriate outcome behavior
+* measure distance between signs in feature space
+* in this case, signs can be imagined on 3D feature space based on color (RGB)
+* Euclidean distance can be calculated
+
+### Applying nearest neighbors in R: Exercises
+
+```{r}
+library(class)
+```
+
+A quick example of a `knn()` call:
+```{r eval=FALSE}
+pred <- knn(training_data, testing_data, training_labels)
+```
+
+Apply a kNN classifier to help a car recognize the sign it is approaching.
+
+The dataset `signs` is loaded in DataCamp (and here), along with the dataframe `next_sign`, which holds the desired observation.
+
+```{r}
+signs <- read.csv("https://assets.datacamp.com/production/repositories/718/datasets/c274ea22cc3d7e12d7bb9fdc9c2bdabe9ab025f4/knn_traffic_signs.csv")
+```
+
+Note that `next_sign` is *not* available in this document, so the following code is not evaluated.
+
+Workflow:
+
+* load the `class` package (done earlier)
+* create a vector of sign labels to use with kNN by extracting the column `sign_type` from `signs`
+* identify `next_sign` using the `knn()` function:
+    + set `train` to the `signs` data frame without the first column
+    + set `test` to the `next_sign` data frame
+    + use the vector of labels you created as the `c1` argument
+    
+```{r eval=FALSE}
+# Load the 'class' package
+library(class)
+
+# Create a vector of labels
+sign_types <- signs$sign_type
+
+# Classify the next sign observed
+knn(train = signs[-1], test = next_sign, cl = sign_types)
+```
+
+The kNN algorithm classified the sign as a stop sign because it was in some way similar to another stop sign in the database.
+
+The training dataset consists of the RGB levels for 16 pixels. Each previously observed street sign was divided into a 4x4 grid, and the red, green and blue level for each of the 16 center pixels was recorded. The result is a dataset that includes sign type as well as 16 x 3 = 48 color measurements of each sign.
+
+* check the structure of `signs`
+* use `table` to count the number of observations of each sign type, stored in `signs$sign_type`
+* check whether the average red level of pixel 10 might vary by sign type using the provided `aggregate` command
+
+```{r}
+# Examine the structure of the signs dataset
+str(signs)
+
+# Count the number of signs of each type
+table(signs$sign_type)
+
+# Check r10's average red level by sign type
+aggregate(r10 ~ sign_type, data = signs, mean)
+```
+This kNN indeed uses the relatively high value of red to identify similar stop signs.
+
+You set your car to run a test course comprised of 59 additional stop signs, speed signs and pedestrian signs. How good is the algorithm at successfully classifying signs?
+
+* `signs` and `test_signs` are available in DataCamp
+* classify `test_signs` using `knn()`:
+    + set `train` to `signs` without labels
+    + set `test` to `test_signs` without labels
+    + set `c1` to the provided vector of labels
+* use `table` to investigate the classifier's performance
+    + create `signs_actual` by extracting labels from `test_signs`
+    + pass the predicted and actual vectors of sign types to `table()` to make a two-by-two confusion matrix
+* compute the overall accuracy of the kNN classifier using `mean()`
+
+Note that this code can't currently run independently due to undefined `test_signs`, so the code is not evaluated here.
+
+```{r eval=FALSE}
+# Use kNN to identify the test road signs
+sign_types <- signs$sign_type
+signs_pred <- knn(train = signs[-1], test = test_signs[-1], cl = sign_types)
+
+# Create a confusion matrix of the actual versus predicted values
+signs_actual <- test_signs$sign_type
+table(signs_pred, signs_actual)
+
+# Compute the accuracy
+mean(signs_pred == signs_actual)
+```
+
+### What about the k in kNN?
+
+* k = how many neighbors to consider
+* so far, we have allowed R to use the default value of k = 1
+* the value of k can have a massive impact on the performance of our algorithm
+* sometimes the first nearest neighbor will be incorrect, but most of the next nearest neighbors will be right
+* k determines the size of "neighborhood" to consider
+* if k = 3, the categories of the top 3 nearest neighbors will all be used to vote on which category should be assigned
+* the category with the majority of nearest neighbors will be assigned
+* in the case of a tie, the winner is usually decided at random
+* note that a bigger k is not always better
+* smaller k allows discernment of very fine patterns and fuzzy boundaries, but could potentially overfit
+* larger k ignores some noise to look for a broad and general pattern, but can miss those fuzzy boundaries
+* some suggest starting with k = sqrt(n(obs))
+* better is often to try several values of k and evaluate what performs well on both training and test data
+
+Compare `k` values of 1, 7 and 15 to examine the effect on sign classification accuracy.
+
+* use a knn model on the `signs` training set, `signs_test` test set, and with `c1 = sign_types`; by default, `k = 1`
+* compute the accuracy of the model with `k = 1`
+* modify the `knn()` function to set `k = 7` and recompute accuracy
+* modify the `knn()` function with `k = 15` and recompute accuracy
+
+```{r eval=FALSE}
+# Compute the accuracy of the baseline model (default k = 1)
+k_1 <- knn(train = signs[-1], test = signs_test[-1], cl = sign_types)
+mean(k_1 == signs_actual)
+
+# Modify the above to set k = 7
+k_7 <- knn(train = signs[-1], test = signs_test[-1], cl = sign_types, k = 7)
+mean(k_7 == signs_actual)
+
+# Set k = 15 and compare to the above
+k_15 <- knn(train = signs[-1], test = signs_test[-1], cl = sign_types, k = 15)
+mean(k_15 == signs_actual)
+```
+
+You can obtain the voting results from the `knn()` function to assess how confident the neighbor-based classification is. This can be useful in cases like the self-driving car, where you would want to engineer caution if there is any chance the sign is a stop sign.
+
+* build a kNN model with `k = 7` and compute vote proportions by adding `prob = TRUE`
+* use `attr()` on the model and extract the "prob" attribute to obtain vote proportions
+
+```{r eval=FALSE}
+# Use the prob parameter to get the proportion of votes for the winning class
+sign_pred <- knn(signs[-1], signs_test[-1], signs$sign_type, prob = TRUE, k = 7)
+
+# Get the "prob" attribute from the predicted classes
+sign_prob <- attr(sign_pred, "prob")
+
+# Examine the first several predictions
+head(sign_pred)
+
+# Examine the proportion of votes for the winning class
+head(sign_prob)
+```
+
+The kNN algorithms assume numeric data. This is an issue when working with categorical data. We can overcome this limitation by encoding categories with *dummy variables*. For example, if we want to classify a sign shape as rectangle, diamond or octagon, we can assign three variables with binary 0/1 values indicating whether a sign has that shape or not. For example, a stop sign would have (rectangle = 0, diamond = 0, octagon = 1).
+
+Dummy coded data can be used directly in a distance function.
+
+Also note that each variable should be on the same range. Suppose you have both color intensity (0-255) and shape (0,1). If they are on different scales, then features will have weight on the categorization relative to their scales rather than just the strength of their predictive power. To make the classifier work appropriately, scales must be normalized. This ensures all data elements may contribute equal shares to Euclidean distance.
+
+```{r}
+# Define a min-max normalize() function
+# minimum value is 0
+# maximum value is 1
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+```
+
+## Bayesian methods
+
+Bayesian methods estimate the probability of future events given historic data.
+
+* consider a record of phone location data
+* out of 40 observations, there are 23 at work, 10 at home, 3 at a restaurant, 4 at a store
+* P(work) = 23/40 = 57.5%
+* P(store) = 4/40 = 10.0%
+* the phone should incorporate other info, like time of day, into its predictions
+* joint probability: P(A and B)
+* P(work and evening) = 1%
+* P(work and afternoon) = 23%
+* conditional probability of events A and B is:
+* P(A|B) = P(A and B)/P(B)
+* P(Work | evening) = P(work and evening) / P(evening) = 1/25 = 4%
+* P(work | afternoon) = P(work and afternoon) / P(afternoon) = 20/25 = 80%
+
+* Naive Bayes algorithm applies Bayesian methods to estimate conditional probability of an outcome.
+* `naivebayes` package provides a function to build this model
+
+```{r}
+library(naivebayes)
+```
+
+```{r eval=FALSE}
+m <- naive_bayes(location ~ time_of_day, data = location_history)
+```
+
+* Note the form of input, `outcome ~ predictors`. This format is called the *R formula interface*.
+* The corresponding `predict()` function predicts future outcomes given future predictive conditions.
+
+* The `where9am` data frame contains 91 days (13 weeks) of data on where the course instructor was at 9am. `location` and `daytype` (weekday versus weekend) was noted.
+* Use conditional probability to compute the probability that Brett is working in the office, given that it is a weekday:
+
+$$ P(A|B) = \frac{P(A \mbox{ and } B)}{P(B)} $$
+* These kinds of calculations form the basis of the naive Bayes prediction model to be used later.
+
+Directions:
+
+* find P(office) using `nrow()` and `subset()` to count rows in the dataset; save as `p_A`
+* find P(weekday) using `nrow()` and `subset()`; save as `p_B`
+* find P(office and weekday) using `nrow()` and `subset()`; save as `p_AB`
+* compute P(office | weekday) and save as `p_A_given_B`
+* print `p_A_given_B`
+
+```{r eval=FALSE}
+# Compute P(A) 
+p_A <- nrow(subset(where9am, location == "office"))/nrow(where9am)
+
+# Compute P(B)
+p_B <- nrow(subset(where9am, daytype == "weekday"))/nrow(where9am)
+
+# Compute the observed P(A and B)
+p_AB <- nrow(subset(where9am, location == "office" & daytype == "weekday"))/nrow(where9am)
+
+# Compute P(A | B) and print its value
+p_A_given_B <- p_AB/p_B
+p_A_given_B
+```
+
+On a weekday, there is a 55% chance the professor will be in the office at 9am. But on a weekend, there is a 0% chance the professor will be in the office at 9am. Day of week is an important predictor of location in this case.
+
+The model uses this information to estimate where the professor will be at 9am on a Thursday and at 9am on a Sunday.
+
+Directions:
+
+* load `naivebayes` (previously done here)
+* use `naive_bayes` with a call structured `outcome ~ predictor` to build a model of `location` as a function of `daytype`
+* forecast the Thursday 9am location using `predict()` with `newdata` set to `thursday9am`
+* forecast the Saturday 9am location using `saturday9am`
+
+```{r eval=FALSE}
+# Load the naivebayes package
+library(naivebayes)
+
+# Build the location prediction model
+locmodel <- naive_bayes(location ~ daytype, data = where9am)
+
+# Predict Thursday's 9am location
+predict(locmodel, newdata = thursday9am)
+
+# Predict Saturdays's 9am location
+predict(locmodel, newdata = saturday9am)
+```
+
+The `naivebayes` package allows you to investigate several aspects of a Naive Bayes model. Typing the name of the model provides a priori and conditional probabilities of each of the model's predictors. R will compute posterior probabilities for you if `predict()` is handed the parameter `type = "prob"`.
+
+```{r eval=FALSE}
+# The 'naivebayes' package is loaded into the workspace
+# and the Naive Bayes 'locmodel' has been built
+
+# Examine the location prediction model
+locmodel
+
+# Obtain the predicted probabilities for Thursday at 9am
+predict(locmodel, newdata = thursday9am , type = "prob")
+
+# Obtain the predicted probabilities for Saturday at 9am
+predict(locmodel, newdata = saturday9am , type = "prob")
+```
+
+To build a more sophisticated model, you might include additional predictors. With a single predictor, your model needs to compute the simple overlap of a 2-component Venn diagram. Add a third predictor and you suddenly need to massively expand the complexity of the problem. Imagine a Venn diagram with dozens of predictors or more. It also becomes computationally inefficient for the computer to calculate this overlap for a variety of reasons.
+
+* The naive Bayes algorithm uses a shortcut to approximate the desired conditional probability.
+* Specifically, it makes the *assumption that the events are independent*.
+* The joint probability of independent events can be computed by multiplying the individual probabilities:
+
+$$ Pr(A \mbox{ and } B \mbox{ and } C) = Pr(A \mbox{ and } B) \times Pr(A \mbox{ and } C) $$
+* This means the algorithm does not need to access or calculate all possible intersections in the Venn diagram to calculate joint probabilities.
+* Although the assumptions of the naive Bayes model are rarely strictly true in practice, research has shown that naive Bayes models often still perform effectively with real world datasets
+* There are definite limitations, though
+    + consider if one of your predictors has never occurred in combination with another (for example, work at 9am on a weekend)
+    + the joint probability of anything trying to account for this conditional probability (P(work and weekend) = 0) will always be zero
+    + so no matter how overwhelming the rest of the evidence that the location could or should be work, the predicted probability of work on a weekend will always be zero - giving the zero value undue veto power
+    + solution: add a small number to each probability (like 1) to eliminate this influence - the Laplace correction
+    + Laplace correction allows a small probability of predicting each outcome, even if it has never been seen before
+    
+Directions:
+
+* The `locations` dataset records the professor's location every hour for 13 weeks
+* Each observation records:
+    + `daytype` (weekend or weekday)
+    + `hourtype` (morning, afternoon, evening, night)
+    + `location` (appointment, campus, home, office, restaurant, store, theater)
+* Use these data to build a more sophisticated model to predict location based on both day and time
+    + Use the R formula interface to build a `naive_bayes(formula, data)` model where `location` depends on both `daytype` and `hourtype`
+    + Predict location on a weekday afternoon using the dataframe `weekday_afternoon` with `predict`
+    + Predict location on a weekday evening with `weekday_evening`
+    
+```{r eval=FALSE}
+# The 'naivebayes' package is loaded into the workspace already
+
+# Build a NB model of location
+locmodel <- naive_bayes(location ~ daytype + hourtype, data = locations)
+
+# Predict Brett's location on a weekday afternoon
+predict(locmodel, weekday_afternoon)
+
+# Predict Brett's location on a weekday evening
+predict(locmodel, weekday_evening)
+```
+
+* In the training data of 13 weeks, the professor never went into the office on a weekend. How does this impact the predicted probabilities for locations on weekend afternoons?
+* Use `locmodel` to output predicted probabilities for a weekend afternoon using `predict()` by setting the `type = prob` argument.
+* Create a new naive Bayes model (`locmodel2`) with Laplace parameter set to 1 with the `laplace` argument inside the `naive_bayes()` call.
+* See how the predicted probabilities from `locmodel2` compare to the original predictions
+
+```{r eval=FALSE}
+# The 'naivebayes' package is loaded into the workspace already
+# The Naive Bayes location model (locmodel) has already been built
+
+# Observe the predicted probabilities for a weekend afternoon
+predict(locmodel, weekend_afternoon, type = "prob")
+
+# Build a new model using the Laplace correction
+locmodel2 <- naive_bayes(location ~ daytype + hourtype, data = locations, laplace = 1)
+
+# Observe the new predicted probabilities for a weekend afternoon
+predict(locmodel2, weekend_afternoon, type = "prob")
+```
+
+* Naive Bayes tends to work well when the information from multiple attributes needs to be considered simultaneously and evaluated together.
+* Naive Bayes works by computing conditional probabilities of events and outcomes
+* It starts with tabular data and builds a frequency table of combinatorial event occurrences
+* The probabilities are then multiplied naively in a chain of all events queried
+* One issue is that this inherently works best with categories, like morning/afternoon/evening/night, rather than numerical data like hour
+* Unstructured text data can also be a categorization problem
+* Preprocessing numbers for naive Bayes: binning for numerical data
+* Preprocessing for text data: bag-of-words method, just create an event for each word that appears in a particular collection of text documents, providing naive Bayes with the bag-of-words for a given document can allow modeling of likelihood of an outcome (i.e. spam) - see the text mining course to learn how to use the **tm** package
+
+## Making binary predictions with regression
+
+* *regression analysis* - branch of statistics interested in modeling numeric relationships within data
+* perhaps more common approach in machine learning
+* estimate binary outcomes using regression
+* case study: how likely someone is to donate to charity
+* dependent variable y given independent predictor variables x
+* suppose you have a binary y outcome
+* y only takes 0,1 outcome - linear regression does not fit well
+* suppose you use a curve instead though - logistic regression - better fit on likelihood of 0,1
+* logistic function has property that for any input x, the output y is always between (0,1) like a probability
+* in R, logistic regression uses the `glm()` function with the R formula interface like this:
+
+```{r eval = FALSE}
+model <- glm(y ~ x1 + x2 + x3,
+             data = my_dataset,
+             family = "binomial")
+```
+
+* `family = "binomial"` tells R to perform logistic regression
+
+Directions:
+* `donors` contains 93,462 observations of people mailed with fundraising requests for paralyzed military veterans
+* `donated = 1` if the person made a donation n response to the mailing and `0` otherwise - this will be our dependent variable
+* the remaining independent variables are features that may influence donation behavior
+* when building a regression model, it's helpful to hypothesize which independent variables will be predictive of the dependent variable
+* we will consider these potential predictors of charitable giving:
+    + `bad_address`: invalid mailing address = `1`
+    + `interest_religion`: religious interest = `1`
+    + `interest_veterans`: vet affairs interest = `1`
+* examine `donors` with `str()`
+* count the number of occurrences of `donated` levels using `table()`
+* fit a logistic regression model, `donation_model`, with `glm()` using the R formula interface described above, relating the three noted predictors to the `donated` dependent variable
+* summarize the model with `summary()`
+
+```{r eval=FALSE}
+# Examine the dataset to identify potential independent variables
+str(donors)
+
+# Explore the dependent variable
+table(donors$donated)
+
+# Build the donation model
+donation_model <- glm(donated ~ bad_address + interest_religion + interest_veterans, 
+                      data = donors, family = "binomial")
+
+# Summarize the model results
+summary(donation_model)
+```
+
+* you can use `predict` on a glm model to forecast future behavior
+* by default, `predict()` outputs predictions as log odds unless `type = "response"` is specified, converting log odds to probabilities
+* it is up to you to determine the thresholds at which probability implies action
+* for example, if you only solicit donors who have > 99% chance of donating, you may miss many potential donors, but if you solicit anyone with a >1% chance of donating, you will likely waste money on marketing materials
+
+Directions:
+
+* `donors` and `donation_model` are available
+* use `predict()` to estimate each donor's donation probability; assign to a new column `donation_prob`
+* find the actual probability that an average person would donate using `mean()`
+* use `ifelse()` to predict a donation if donation probability is greater than the mean; assign to a new column `donation_pred`
+* use `mean()` to calculate model accuracy
+
+```{r eval=FALSE}
+# Estimate the donation probability
+donors$donation_prob <- predict(donation_model, donors, type = "response")
+
+# Find the donation probability of the average prospect
+mean(donors$donated)
+
+# Predict a donation if probability of donation is greater than average (0.0504)
+donors$donation_pred <- ifelse(donors$donation_prob > 0.0504, 1, 0)
+
+# Calculate the model's accuracy
+mean(donors$donation_pred == donors$donated)
+```
+
+The model has an accuracy of almost 80%. But is it too good to be true?
+
+Remember that the outcome `donors$donated == 1` is actually rare -only about 5% of people donated. Our model actually does worse than just predicting everyone will not donate (`mean(donors$donated == 0)` = 0.9496).
+
+* rare events act as predictive challenges
+* consider above where predicting no donation had nearly 95% accuracy, but it gave us no information about what we actually care about: who donates
+* we might choose to sacrifice overall accuracy in order to prioritize accuracy in identifying positive donors
+* *ROC curve* visualizes model's ability to distinguish between positive and negative predictions
+* relationship between % positive outcome and % other outcomes
+* visualizes tradeoff between true positives and false positives for outcome of interest
+* on a 1 x 1 unit square
+* diagonal line is baseline performace of a very poor model, essentially random chance
+* to quantify performance, AUC is used
+* a poor model (random chance) will have AUC = 0.50
+* a perfect model will have AUC = 1.00
+* note that multiple curves can have the same AUC, so it's important to visualize the model's performace over a range of cases - maybe a model catches the easy cases but misses more difficult, or maybe a model performs fairly consistently over the range of case difficulty
+
+Directions:
+
+* accuracy can be a very misleading measure of performance if datasets are imbalanced
+* graphing model performance illustrates the tradeoff between models that are overly aggressive or too passive
+* create an ROC curve and compute AUC to evaluate the logistic regression model of donations
+*  `donors` has the column of predicted probabilities `donation_prob`
+* load *pROC* package
+* create an ROC curve with `roc()` and columns of actual and predicted donations; store as `ROC`
+* plot the `ROC` object with `col = "blue"`
+* compute AUC with `auc()`
+
+```{r eval=FALSE}
+# Load the pROC package
+library(pROC)
+
+# Create a ROC curve
+ROC <- roc(donors$donated, donors$donation_prob)
+
+# Plot the ROC curve
+plot(ROC, col = "blue")
+
+# Calculate the area under the curve (AUC)
+auc(ROC)
+```
+
+With an AUC = 0.5102 and a plotted curve highly similar to the identity line, our model clearly is doing little better than guessing.
+
+### Dummy variables and imputation of missing values
+
+* all predictors in regression must be numeric
+* categorical variables must be converted to dummy variables
+    + `glm()` automatically dummy codes any factor type variables used in the model
+    + you can do it yourself with `factor()` explicitly
+    + even if a category is already represented as numbers (1, 2, 3 for mild/medium/hot), it may still be advisable to convert to a factor so grouping can be easily done and different sets can be analyzed independently more easily
+* missing data must be filtered or substituted
+    + by default, regression excludes anything with a missing value
+    + for categorical values, include a "missing" category
+    + for numeric, imputation can take an educated guess about what the value may be
+    + mean imputation substitutes the average
+    + a binary 1/0 "missing_val" indicator can be added as a separate column to model the fact that a value was imputed (this sometimes becomes an unexpected high predictor)
+    + this is appropriate for simple models, but more complex models require more advanced imputation, ideally using the values of the not-missing predictors
+    
+### Interactions between predictors
+
+* interactions between predictors can be noted to increase predictive power
+* predictors have an *interaction* when their combination may have a different impact on outcome than the sum of their separate impacts
+* their combination may strengthen, weaken, eliminate or reverse the impact of individual predictors
+* example: independently, obesity and smoking are harmful for heart health, but the combination of obesity and smoking is worse than the sum of each exposure's harm
+* example: two drugs may independently improve survival, but taking them together may reduce or eliminate the survival benefit
+* `glm()` uses the multiplication (`*`) symbol to denote interaction between two predictors:
+```{r eval=FALSE}
+glm(disease ~ obesity * smoking,
+    data = health,
+    family = "binomial")
+```
+
+* the resulting model will include terms for each predictor individually, as well as the combined effect
+
+Directions:
+
+* in the `donors` dataset, `wealth_rating` uses numbers to indicate the categorical level of donor's wealth:
+  + `0` = unknown
+  + `1` = low
+  + `2` = medium
+  + `3` = high
+* convert `wealth_rating` to a factor by passing it to `factor()`, along with individual levels and labels
+* use `relevel()` to change reference category to `"Medium"` - the first argument should be the factor column
+* build a logistic regression model using `wealth_rating` to predict `donated` and display the result with `summary()`
+
+```{r eval=FALSE}
+# Convert the wealth rating to a factor
+donors$wealth_rating <- factor(donors$wealth_rating, levels = c(0, 1, 2, 3), labels = c("Unknown", "Low", "Medium", "High"))
+
+# Use relevel() to change reference category
+donors$wealth_rating <- relevel(donors$wealth_rating, ref = "Medium")
+
+# See how our factor coding impacts the model
+summary(glm(donated ~ wealth_rating, data = donors, family = "binomial"))
+```
+
+* some prospective donors have missing `age`, but R will exclude any cases with `NA` when doing regression
+* we can impute the missing values with an estimated value
+* we can also create a missing data indicator to model the chance that cases with missing data are different than those with all data fields filled
+* use `summary()` on `donors` to find the average age of prospects with non-missing data
+* use `ifelse()` and `is.na(donors$age)` to impute the average (rounded to 2 decimal places) when `age` is missing
+* create a binary dummy variable named `missing_age` indicating whether age data are missing using a second `ifelse()` statement with the same test
+```{r eval=FALSE}
+# Find the average age among non-missing values
+summary(donors$age)
+
+# Impute missing age values with mean(age)
+donors$imputed_age <- ifelse(is.na(donors$age), round(mean(donors$age, na.rm = TRUE), 2), donors$age)
+
+# Create missing value indicator for age
+donors$missing_age <- ifelse(is.na(donors$age), 1, 0)
+```
+
+* a strong predictor of future giving is a history of recent, frequent and large gifts (R/F/M: recency/frequency/money)
+* donors that have given both recently and frequently may be especially likely to give again: the combined effect of recency/frequency may exceed the summed value of separate effects
+* create a logistic regression model of `donated` as a function of `money` plus the interaction of `recency` and `frequency`
+* examine the model's `summary()`
+* save the predicted probabilities, generated with `predict()` with `type` set, as `rfm_prob`
+* plot a ROC curve using `roc()` - remember that the function takes the column of actual outcomes and the vector of predictions
+* 
